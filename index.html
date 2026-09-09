@@ -233,9 +233,21 @@
   .card-ger{
     background:var(--card); border:1px solid var(--borde); border-radius:14px;
     padding:16px 18px; text-align:center; border-top:4px solid var(--oliva);
+    cursor:pointer; transition:box-shadow .15s ease; user-select:none;
   }
+  .card-ger:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);}
+  .card-ger.active{box-shadow:inset 0 0 0 2px var(--oliva); background:#f4f6e6;}
   .card-ger .num{font-size:1.9rem; font-weight:800; color:var(--texto); line-height:1.1;}
   .card-ger .lbl{margin-top:6px; font-size:.74rem; letter-spacing:.5px; text-transform:uppercase; color:var(--gris); font-weight:700;}
+  .ger-apoyo-activo{
+    font-size:.78rem; color:#4a5210; background:#eef3cf; border:1px solid var(--oliva);
+    border-radius:8px; padding:6px 10px; margin-bottom:10px; display:inline-flex; align-items:center; gap:8px;
+  }
+  .ger-apoyo-activo button{
+    border:none; background:var(--oliva); color:#fff; border-radius:6px; padding:2px 8px;
+    font-size:.72rem; cursor:pointer;
+  }
+  .ger-apoyo-activo button:hover{background:var(--lima); color:#2b2b2d;}
   .ger-total-general{
     background:#eef3cf; border:1px solid var(--oliva); border-radius:12px;
     padding:12px 16px; margin-bottom:14px; font-size:.88rem; color:#4a5210; font-weight:600;
@@ -617,29 +629,46 @@
 
     <!-- Cuadro resumen: usa exactamente los mismos filtros del Dashboard,
          excluyendo Reuniones y Políticas para que la suma de todos los
-         cuadros coincida con el total general de arriba. -->
+         cuadros coincida con el total general de arriba. Cada cuadro es
+         además un FILTRO: al hacer clic, se filtran la gráfica por
+         abogado y la gráfica diaria de abajo. -->
     <div class="cards-main">
-      <div class="card card-total"><div class="num" id="gerTotal">0</div><div class="lbl">Total</div></div>
-      <div class="card card-vencidas"><div class="num" id="gerVencidas">0</div><div class="lbl">Vencidas</div></div>
-      <div class="card card-pendientes"><div class="num" id="gerPendientes">0</div><div class="lbl">Pendiente</div></div>
-      <div class="card card-suspendidas"><div class="num" id="gerSuspendidas">0</div><div class="lbl">Suspendidas</div></div>
+      <div class="card card-total" id="gerBoxTotal" title="Clic para quitar el filtro de estado">
+        <div class="num" id="gerTotal">0</div><div class="lbl">Total</div>
+      </div>
+      <div class="card card-vencidas" id="gerBoxVencidas" title="Clic para filtrar por vencidas">
+        <div class="num" id="gerVencidas">0</div><div class="lbl">Vencidas</div>
+      </div>
+      <div class="card card-pendientes" id="gerBoxPendientes" title="Clic para filtrar por pendiente">
+        <div class="num" id="gerPendientes">0</div><div class="lbl">Pendiente</div>
+      </div>
+      <div class="card card-suspendidas" id="gerBoxSuspendidas" title="Clic para filtrar por suspendidas">
+        <div class="num" id="gerSuspendidas">0</div><div class="lbl">Suspendidas</div>
+      </div>
     </div>
 
     <div class="cards-ger-extra">
-      <div class="card-ger">
+      <div class="card-ger" id="gerBoxReuniones" title="Clic para filtrar por reuniones">
         <div class="num" id="gerReuniones">0</div>
         <div class="lbl">Reuniones · Audiencias · Capacitación · Comités</div>
       </div>
-      <div class="card-ger">
+      <div class="card-ger" id="gerBoxPoliticas" title="Clic para filtrar por políticas">
         <div class="num" id="gerPoliticas">0</div>
         <div class="lbl">Políticas</div>
       </div>
     </div>
 
-    <!-- Resumen por abogado de apoyo: gráfico de barras combinado -->
+    <!-- Resumen por abogado de apoyo: gráfico de barras combinado.
+         Al hacer clic en un abogado, se filtran el cuadro resumen de
+         arriba y la gráfica diaria de abajo para mostrar solo sus
+         tareas (respetando también el estado seleccionado, si hay). -->
     <div class="panel" style="margin-bottom:20px;">
       <h2>Resumen por abogado de apoyo</h2>
-      <div class="panel-sub">Columna "ABOGADO DE APOYO" (M) de la hoja TAREAS 2026 · se actualiza con los mismos filtros del Dashboard.</div>
+      <div class="panel-sub">Columna "ABOGADO DE APOYO" (M) de la hoja TAREAS 2026 · clic sobre un abogado para filtrar el resto de la hoja por él.</div>
+      <div id="gerApoyoActivo" class="ger-apoyo-activo" style="display:none;">
+        Filtrando por: <b id="gerApoyoActivoNombre"></b>
+        <button id="btnQuitarApoyoGer" type="button">Quitar</button>
+      </div>
       <div class="panel-legend">
         <span><span class="sw sw-venc"></span>Vencidas</span>
         <span><span class="sw sw-pend"></span>Pendiente</span>
@@ -653,7 +682,7 @@
     <!-- Gráfica de tareas por día (fecha de compromiso interno, columna E) -->
     <div class="panel">
       <h2>Tareas por fecha de compromiso interno</h2>
-      <div class="panel-sub">Columna "FECHA DE COMPROMISO INTERNO" (E) · ordenado de forma ascendente.</div>
+      <div class="panel-sub">Columna "FECHA DE COMPROMISO INTERNO" (E) · ordenado de forma ascendente · respeta los filtros de arriba.</div>
       <div class="chart-scroll" id="graficoDiario"></div>
     </div>
 
@@ -975,16 +1004,64 @@ function render(){
    por lo que es completamente dinámica: cambia con cada filtro
    y con cada archivo que se cargue, igual que el resto del panel.
    ========================================================== */
+/* ==========================================================
+   REPORTERÍA GERENCIAL — "Operaciones"
+   Parte siempre de los mismos filtros del Dashboard (Cliente,
+   Fidelizador, Apoyo, Tipo, Estado). Sobre ese conjunto, esta vista
+   agrega SUS PROPIOS filtros dinámicos (clic en los cuadros y clic
+   en un abogado de la gráfica), que se aplican entre sí:
+     - gerEstadoFilter: 'VENCIDA' | 'PENDIENTE' | 'SUSPENDIDA POR CLIENTE'
+                        | 'REUNION' | 'POLITICA' | null
+     - gerApoyoFilter:  nombre del abogado de apoyo seleccionado | null
+   ========================================================== */
+let gerEstadoFilter = null;
+let gerApoyoFilter = null;
+
+/* Excluye SUBTAREA ABIERTA (igual criterio que el Total del Dashboard)
+   y aplica los filtros propios de esta vista sobre un conjunto de filas. */
+function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true} = {}){
+  return rows.filter(r=>{
+    const e = (r.e||'').toUpperCase();
+    if(e === 'SUBTAREA ABIERTA') return false;
+    const isReun = esReunionTipo(r);
+    const isPol = esPoliticaTipo(r);
+    if(usarEstado && gerEstadoFilter){
+      if(gerEstadoFilter === 'REUNION'){ if(!isReun) return false; }
+      else if(gerEstadoFilter === 'POLITICA'){ if(!isPol) return false; }
+      else {
+        if(isReun || isPol) return false;
+        if(e !== gerEstadoFilter) return false;
+      }
+    }
+    if(usarApoyo && gerApoyoFilter){
+      if(norm(r.aa).toLowerCase() !== gerApoyoFilter.toLowerCase()) return false;
+    }
+    return true;
+  });
+}
+
+function toggleGerEstado(valor){
+  gerEstadoFilter = (gerEstadoFilter === valor) ? null : valor;
+  render();
+}
+function toggleGerApoyo(nombre){
+  gerApoyoFilter = (gerApoyoFilter && gerApoyoFilter.toLowerCase() === nombre.toLowerCase()) ? null : nombre;
+  render();
+}
+
 function renderGerencial(filtered){
   const elTotal = document.getElementById('gerTotal');
   if(!elTotal) return; // la vista aún no existe en el DOM
 
+  // Cuadros de arriba + gráfica diaria: respetan AMBOS filtros propios
+  // (estado seleccionado Y abogado seleccionado).
+  const paraCuadros = aplicarFiltrosGer(filtered);
+
   let vVenc=0, vPend=0, vSusp=0, vReun=0, vPol=0;
-  filtered.forEach(r=>{
-    const e = (r.e||'').toUpperCase();
-    if(e === 'SUBTAREA ABIERTA') return; // igual criterio que el Total del Dashboard
+  paraCuadros.forEach(r=>{
     if(esReunionTipo(r)){ vReun++; return; }
     if(esPoliticaTipo(r)){ vPol++; return; }
+    const e = (r.e||'').toUpperCase();
     if(e === 'VENCIDA') vVenc++;
     else if(e === 'PENDIENTE') vPend++;
     else if(e === 'SUSPENDIDA POR CLIENTE') vSusp++;
@@ -999,27 +1076,75 @@ function renderGerencial(filtered){
   document.getElementById('gerPoliticas').textContent = vPol;
   document.getElementById('gerTotalGeneral').textContent = totalPrincipal + vReun + vPol;
 
-  renderResumenApoyo(filtered);
-  renderGraficoDiario(filtered);
+  // Resaltar el cuadro activo (o ninguno si no hay filtro de estado)
+  const boxTotal = document.getElementById('gerBoxTotal');
+  const boxVenc = document.getElementById('gerBoxVencidas');
+  const boxPend = document.getElementById('gerBoxPendientes');
+  const boxSusp = document.getElementById('gerBoxSuspendidas');
+  const boxReun = document.getElementById('gerBoxReuniones');
+  const boxPol = document.getElementById('gerBoxPoliticas');
+  if(boxTotal) boxTotal.classList.toggle('active', !gerEstadoFilter);
+  if(boxVenc) boxVenc.classList.toggle('active', gerEstadoFilter === 'VENCIDA');
+  if(boxPend) boxPend.classList.toggle('active', gerEstadoFilter === 'PENDIENTE');
+  if(boxSusp) boxSusp.classList.toggle('active', gerEstadoFilter === 'SUSPENDIDA POR CLIENTE');
+  if(boxReun) boxReun.classList.toggle('active', gerEstadoFilter === 'REUNION');
+  if(boxPol) boxPol.classList.toggle('active', gerEstadoFilter === 'POLITICA');
+
+  // Indicador de abogado seleccionado
+  const elActivo = document.getElementById('gerApoyoActivo');
+  const elActivoNombre = document.getElementById('gerApoyoActivoNombre');
+  if(elActivo){
+    if(gerApoyoFilter){ elActivo.style.display = 'inline-flex'; elActivoNombre.textContent = gerApoyoFilter; }
+    else { elActivo.style.display = 'none'; }
+  }
+
+  // Gráfica por abogado: respeta el estado seleccionado (si hay) para
+  // que cada barra muestre esa categoría, pero SIEMPRE muestra a todos
+  // los abogados (sin aplicar el filtro de abogado) para poder cambiar
+  // de selección con un clic.
+  const paraApoyo = aplicarFiltrosGer(filtered, {usarApoyo:false});
+  renderResumenApoyo(paraApoyo);
+
+  // Gráfica diaria: respeta ambos filtros, igual que los cuadros.
+  renderGraficoDiario(paraCuadros);
 }
+
+const _btnQuitarApoyoGer = document.getElementById('btnQuitarApoyoGer');
+if(_btnQuitarApoyoGer) _btnQuitarApoyoGer.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  gerApoyoFilter = null;
+  render();
+});
+const _gerBoxTotal = document.getElementById('gerBoxTotal');
+if(_gerBoxTotal) _gerBoxTotal.addEventListener('click', ()=>{ gerEstadoFilter = null; render(); });
+const _gerBoxVencidas = document.getElementById('gerBoxVencidas');
+if(_gerBoxVencidas) _gerBoxVencidas.addEventListener('click', ()=> toggleGerEstado('VENCIDA'));
+const _gerBoxPendientes = document.getElementById('gerBoxPendientes');
+if(_gerBoxPendientes) _gerBoxPendientes.addEventListener('click', ()=> toggleGerEstado('PENDIENTE'));
+const _gerBoxSuspendidas = document.getElementById('gerBoxSuspendidas');
+if(_gerBoxSuspendidas) _gerBoxSuspendidas.addEventListener('click', ()=> toggleGerEstado('SUSPENDIDA POR CLIENTE'));
+const _gerBoxReuniones = document.getElementById('gerBoxReuniones');
+if(_gerBoxReuniones) _gerBoxReuniones.addEventListener('click', ()=> toggleGerEstado('REUNION'));
+const _gerBoxPoliticas = document.getElementById('gerBoxPoliticas');
+if(_gerBoxPoliticas) _gerBoxPoliticas.addEventListener('click', ()=> toggleGerEstado('POLITICA'));
 
 /* Resumen por Abogado de Apoyo (columna M de 'TAREAS 2026'), como
    gráfico de barras combinado (apiladas): cada abogado es una barra
-   con 5 segmentos -> Vencidas / Pendiente / Suspendidas / Reuniones /
-   Políticas, en la misma proporción de sus tareas. */
+   con hasta 5 segmentos -> Vencidas / Pendiente / Suspendidas /
+   Reuniones / Políticas. Clic sobre un abogado = filtro dinámico
+   (toggleGerApoyo) que afecta los cuadros de arriba y la gráfica diaria. */
 function renderResumenApoyo(filtered){
   const container = document.getElementById('resumenApoyo');
   if(!container) return;
 
   const map = new Map();
   filtered.forEach(r=>{
-    const e = (r.e||'').toUpperCase();
-    if(e === 'SUBTAREA ABIERTA') return;
     const k = norm(r.aa) || '(Sin abogado de apoyo)';
     if(!map.has(k)) map.set(k, {venc:0, pend:0, susp:0, reun:0, pol:0});
     const o = map.get(k);
     if(esReunionTipo(r)){ o.reun++; return; }
     if(esPoliticaTipo(r)){ o.pol++; return; }
+    const e = (r.e||'').toUpperCase();
     if(e === 'VENCIDA') o.venc++;
     else if(e === 'PENDIENTE') o.pend++;
     else if(e === 'SUSPENDIDA POR CLIENTE') o.susp++;
@@ -1038,8 +1163,9 @@ function renderResumenApoyo(filtered){
   const max = entries[0].total || 1;
   entries.forEach(e=>{
     const row = document.createElement('div');
-    row.className = 'bar-row';
-    row.title = `${e.name} — Vencidas: ${e.venc} · Pendiente: ${e.pend} · Suspendidas: ${e.susp} · Reuniones: ${e.reun} · Políticas: ${e.pol}`;
+    const isActive = gerApoyoFilter && gerApoyoFilter.toLowerCase() === e.name.toLowerCase();
+    row.className = 'bar-row clickable' + (isActive ? ' active' : '');
+    row.title = `Clic para filtrar por: ${e.name} — Vencidas: ${e.venc} · Pendiente: ${e.pend} · Suspendidas: ${e.susp} · Reuniones: ${e.reun} · Políticas: ${e.pol}`;
     const pctTotal = Math.round((e.total/max)*100);
     row.innerHTML = `
       <div class="bname" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</div>
@@ -1053,6 +1179,7 @@ function renderResumenApoyo(filtered){
         </div>
       </div>
       <div class="bval">${e.total}</div>`;
+    row.addEventListener('click', ()=> toggleGerApoyo(e.name));
     container.appendChild(row);
   });
 }
