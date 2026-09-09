@@ -204,6 +204,8 @@
   .sw-venc{background:var(--rojo);}
   .sw-pend{background:var(--verde);}
   .sw-susp{background:var(--gris);}
+  .sw-reun{background:var(--morado);}
+  .sw-pol{background:var(--oliva);}
 
   .bar-row{display:flex; align-items:center; gap:10px; padding:6px 4px; font-size:.85rem; border-radius:6px;}
   .bar-row.clickable{cursor:pointer;}
@@ -220,6 +222,8 @@
   .seg-venc{background:var(--rojo);}
   .seg-pend{background:var(--verde);}
   .seg-susp{background:var(--gris);}
+  .seg-reun{background:var(--morado);}
+  .seg-pol{background:var(--oliva);}
   .bar-row .bval{flex:0 0 34px; text-align:right; font-weight:700; color:var(--texto); font-size:.82rem;}
   .empty-msg{color:var(--gris); font-size:.85rem; padding:10px 0;}
   .scroll-panel{max-height:340px; overflow-y:auto; padding-right:4px;}
@@ -238,18 +242,6 @@
   }
   .ger-total-general b{font-size:1.05rem;}
   .panel-sub{font-size:.76rem; color:var(--gris); margin:-4px 0 10px;}
-  #tablaApoyo{width:100%; border-collapse:collapse;}
-  #tablaApoyo thead th{
-    background:var(--gris); color:#fff; text-align:left; padding:9px 10px;
-    font-size:.72rem; text-transform:uppercase; letter-spacing:.4px; position:sticky; top:0;
-  }
-  #tablaApoyo thead th:not(:first-child){text-align:right;}
-  #tablaApoyo tbody td{padding:8px 10px; border-top:1px solid var(--borde); font-size:.85rem;}
-  #tablaApoyo tbody td:not(:first-child){text-align:right; font-variant-numeric:tabular-nums;}
-  #tablaApoyo tbody tr:nth-child(even){background:#fbfbfb;}
-  #tablaApoyo tbody tr:hover{background:#f4f6e6;}
-  #tablaApoyo tfoot td{padding:9px 10px; border-top:2px solid var(--gris); font-weight:800;}
-  #tablaApoyo tfoot td:not(:first-child){text-align:right;}
 
   .chart-scroll{overflow-x:auto; padding-bottom:6px;}
   .chart-bars{display:flex; align-items:flex-end; gap:12px; min-height:210px; padding:14px 6px 0;}
@@ -427,13 +419,12 @@
   <div class="view-tabs">
     <button class="view-tab active" id="tabDashboard" type="button">Dashboard</button>
     <button class="view-tab" id="tabAgenda" type="button">Agenda</button>
-    <button class="view-tab" id="tabGerencial" type="button">Reportería Gerencial</button>
+    <button class="view-tab" id="tabGerencial" type="button">Operaciones</button>
   </div>
 
-  <div id="viewDashboard">
-
-  <!-- Filtros -->
-  <div class="filters">
+  <!-- Filtros: compartidos entre Dashboard y Operaciones, para que al
+       filtrar se actualicen ambas vistas exactamente igual. -->
+  <div class="filters" id="sharedFilters">
     <div class="filter-field" id="wrapCliente">
       <label>Cliente</label>
       <button class="ms-btn" id="btnCliente" type="button">
@@ -495,6 +486,8 @@
       <button class="btn btn-ghost" id="btnReset">Limpiar filtros</button>
     </div>
   </div>
+
+  <div id="viewDashboard">
 
   <div class="total-count">Tareas activas visibles: <b id="totalCount">0</b></div>
 
@@ -615,7 +608,7 @@
 
   </div><!-- /viewAgenda -->
 
-  <!-- ================== VISTA REPORTERÍA GERENCIAL ================== -->
+  <!-- ================== VISTA OPERACIONES ================== -->
   <div id="viewGerencial" style="display:none;">
 
     <div class="ger-total-general">
@@ -643,37 +636,18 @@
       </div>
     </div>
 
-    <!-- Resumen por abogado de apoyo -->
+    <!-- Resumen por abogado de apoyo: gráfico de barras combinado -->
     <div class="panel" style="margin-bottom:20px;">
       <h2>Resumen por abogado de apoyo</h2>
       <div class="panel-sub">Columna "ABOGADO DE APOYO" (M) de la hoja TAREAS 2026 · se actualiza con los mismos filtros del Dashboard.</div>
-      <div class="table-scroll">
-        <table id="tablaApoyo">
-          <thead>
-            <tr>
-              <th>Abogado de apoyo</th>
-              <th>Vencidas</th>
-              <th>Pendiente</th>
-              <th>Suspendidas</th>
-              <th>Reuniones</th>
-              <th>Políticas</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody id="tablaApoyoBody"></tbody>
-          <tfoot>
-            <tr>
-              <td>Total</td>
-              <td id="apoyoFootVenc">0</td>
-              <td id="apoyoFootPend">0</td>
-              <td id="apoyoFootSusp">0</td>
-              <td id="apoyoFootReun">0</td>
-              <td id="apoyoFootPol">0</td>
-              <td id="apoyoFootTotal">0</td>
-            </tr>
-          </tfoot>
-        </table>
+      <div class="panel-legend">
+        <span><span class="sw sw-venc"></span>Vencidas</span>
+        <span><span class="sw sw-pend"></span>Pendiente</span>
+        <span><span class="sw sw-susp"></span>Suspendidas</span>
+        <span><span class="sw sw-reun"></span>Reuniones</span>
+        <span><span class="sw sw-pol"></span>Políticas</span>
       </div>
+      <div class="scroll-panel" id="resumenApoyo"></div>
     </div>
 
     <!-- Gráfica de tareas por día (fecha de compromiso interno, columna E) -->
@@ -770,7 +744,7 @@ function uniqueSorted(arr){
   });
   return Array.from(map.values()).sort((a,b)=>a.localeCompare(b,'es'));
 }
-/* ---------- Reportería Gerencial: tipos de tarea especiales ----------
+/* ---------- Operaciones: tipos de tarea especiales ----------
    Columna Q (TIPO DE TAREA) de 'TAREAS 2026'. Estos tipos se excluyen
    del cuadro resumen principal y se muestran en sus propios cuadros,
    para que Total-principal + Reuniones + Políticas = Total general. */
@@ -1029,12 +1003,13 @@ function renderGerencial(filtered){
   renderGraficoDiario(filtered);
 }
 
-/* Resumen por Abogado de Apoyo (columna M de 'TAREAS 2026').
-   Muestra, para cada abogado, el mismo desglose del cuadro resumen
-   de arriba (Vencidas/Pendiente/Suspendidas/Reuniones/Políticas). */
+/* Resumen por Abogado de Apoyo (columna M de 'TAREAS 2026'), como
+   gráfico de barras combinado (apiladas): cada abogado es una barra
+   con 5 segmentos -> Vencidas / Pendiente / Suspendidas / Reuniones /
+   Políticas, en la misma proporción de sus tareas. */
 function renderResumenApoyo(filtered){
-  const body = document.getElementById('tablaApoyoBody');
-  if(!body) return;
+  const container = document.getElementById('resumenApoyo');
+  if(!container) return;
 
   const map = new Map();
   filtered.forEach(r=>{
@@ -1055,25 +1030,31 @@ function renderResumenApoyo(filtered){
     .filter(e=>e.total > 0)
     .sort((a,b)=>b.total-a.total);
 
-  body.innerHTML = '';
-  const foot = {venc:0, pend:0, susp:0, reun:0, pol:0, total:0};
+  container.innerHTML = '';
   if(entries.length === 0){
-    body.innerHTML = '<tr><td colspan="7" class="empty-msg">Sin datos para los filtros seleccionados.</td></tr>';
-  }else{
-    entries.forEach(e=>{
-      foot.venc += e.venc; foot.pend += e.pend; foot.susp += e.susp;
-      foot.reun += e.reun; foot.pol += e.pol; foot.total += e.total;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${escapeHtml(e.name)}</td><td>${e.venc}</td><td>${e.pend}</td><td>${e.susp}</td><td>${e.reun}</td><td>${e.pol}</td><td><b>${e.total}</b></td>`;
-      body.appendChild(tr);
-    });
+    container.innerHTML = '<div class="empty-msg">Sin datos para los filtros seleccionados.</div>';
+    return;
   }
-  document.getElementById('apoyoFootVenc').textContent = foot.venc;
-  document.getElementById('apoyoFootPend').textContent = foot.pend;
-  document.getElementById('apoyoFootSusp').textContent = foot.susp;
-  document.getElementById('apoyoFootReun').textContent = foot.reun;
-  document.getElementById('apoyoFootPol').textContent = foot.pol;
-  document.getElementById('apoyoFootTotal').textContent = foot.total;
+  const max = entries[0].total || 1;
+  entries.forEach(e=>{
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.title = `${e.name} — Vencidas: ${e.venc} · Pendiente: ${e.pend} · Suspendidas: ${e.susp} · Reuniones: ${e.reun} · Políticas: ${e.pol}`;
+    const pctTotal = Math.round((e.total/max)*100);
+    row.innerHTML = `
+      <div class="bname" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</div>
+      <div class="btrack">
+        <div class="bfill-stack" style="width:${pctTotal}%">
+          <div class="seg-venc" style="flex:${e.venc||0}" title="Vencidas: ${e.venc}"></div>
+          <div class="seg-pend" style="flex:${e.pend||0}" title="Pendiente: ${e.pend}"></div>
+          <div class="seg-susp" style="flex:${e.susp||0}" title="Suspendidas: ${e.susp}"></div>
+          <div class="seg-reun" style="flex:${e.reun||0}" title="Reuniones: ${e.reun}"></div>
+          <div class="seg-pol" style="flex:${e.pol||0}" title="Políticas: ${e.pol}"></div>
+        </div>
+      </div>
+      <div class="bval">${e.total}</div>`;
+    container.appendChild(row);
+  });
 }
 
 const MESES_ABR_MIN = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -1460,33 +1441,21 @@ const tabGerencial = document.getElementById('tabGerencial');
 const viewDashboard = document.getElementById('viewDashboard');
 const viewAgenda = document.getElementById('viewAgenda');
 const viewGerencial = document.getElementById('viewGerencial');
+const sharedFilters = document.getElementById('sharedFilters');
 function activarPestana(tab){
   [tabDashboard, tabAgenda, tabGerencial].forEach(t=> t && t.classList.remove('active'));
   [viewDashboard, viewAgenda, viewGerencial].forEach(v=> v && (v.style.display = 'none'));
+  // Los filtros son compartidos: se ven en Dashboard y en Operaciones
+  // (ambas vistas leen el mismo 'filters' y el mismo getFiltered()),
+  // pero se ocultan en Agenda porque esa vista no los usa.
+  if(sharedFilters) sharedFilters.style.display = (tab === 'agenda') ? 'none' : '';
   if(tab === 'dashboard'){ tabDashboard.classList.add('active'); viewDashboard.style.display=''; }
-  else if(tab === 'agenda'){ tabAgenda.classList.add('active'); viewAgenda.style.display=''; }
+  else if(tab === 'agenda'){ tabAgenda.classList.add('active'); viewAgenda.style.display=''; renderAgenda(); }
   else if(tab === 'gerencial'){ tabGerencial.classList.add('active'); viewGerencial.style.display=''; render(); }
 }
+if(tabDashboard) tabDashboard.addEventListener('click', ()=> activarPestana('dashboard'));
+if(tabAgenda) tabAgenda.addEventListener('click', ()=> activarPestana('agenda'));
 if(tabGerencial) tabGerencial.addEventListener('click', ()=> activarPestana('gerencial'));
-if(tabDashboard && tabAgenda){
-  tabDashboard.addEventListener('click', ()=>{
-    tabDashboard.classList.add('active');
-    tabAgenda.classList.remove('active');
-    if(tabGerencial) tabGerencial.classList.remove('active');
-    viewDashboard.style.display = '';
-    viewAgenda.style.display = 'none';
-    if(viewGerencial) viewGerencial.style.display = 'none';
-  });
-  tabAgenda.addEventListener('click', ()=>{
-    tabAgenda.classList.add('active');
-    tabDashboard.classList.remove('active');
-    if(tabGerencial) tabGerencial.classList.remove('active');
-    viewAgenda.style.display = '';
-    viewDashboard.style.display = 'none';
-    if(viewGerencial) viewGerencial.style.display = 'none';
-    renderAgenda(); // por si los datos cambiaron mientras se veía el Dashboard
-  });
-}
 
 /* ---------- carga de archivo Excel ---------- */
 const HEADER_MAP = {
