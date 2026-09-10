@@ -777,7 +777,7 @@ function uniqueSorted(arr){
    Columna Q (TIPO DE TAREA) de 'TAREAS 2026'. Estos tipos se excluyen
    del cuadro resumen principal y se muestran en sus propios cuadros,
    para que Total-principal + Reuniones + Políticas = Total general. */
-const REUNION_TIPOS = new Set(['REUNIÓN','REUNION','AUDIENCIA','CAPACITACIÓN','CAPACITACION','COMITÉ DE CONVIVENCIA','COMITE DE CONVIVENCIA','COMITÉ LABORAL','COMITE LABORAL']);
+const REUNION_TIPOS = new Set(['REUNIÓN','REUNION','AUDIENCIA','CAPACITACIÓN','CAPACITACION','COMITÉ DE CONVIVENCIA','COMITE DE CONVIVENCIA','COMITÉ LABORAL','COMITE LABORAL','COMITÉ LABORA','COMITE LABORA']);
 const POLITICA_TIPOS = new Set(['POLÍTICAS','POLITICAS']);
 function esReunionTipo(r){ return REUNION_TIPOS.has((r.t||'').toUpperCase()); }
 function esPoliticaTipo(r){ return POLITICA_TIPOS.has((r.t||'').toUpperCase()); }
