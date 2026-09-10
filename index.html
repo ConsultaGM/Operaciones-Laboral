@@ -979,8 +979,7 @@ function rebuildVisitasFilterOptions(){
   renderVisitasMultiSelectOptions('apoyo');
 }
 function onVisitasFiltersChanged(){
-  rebuildVisitasFilterOptions();
-  render();
+  renderVisitas();
 }
 function setupVisitasMultiSelect(key){
   const capKey = key === 'cliente' ? 'VCliente' : 'VApoyo';
