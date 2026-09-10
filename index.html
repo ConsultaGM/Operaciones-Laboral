@@ -752,10 +752,22 @@
 
     <div class="total-count">Visitas (reuniones + comités) visibles: <b id="visitasTotalCount">0</b></div>
 
+    <!-- Cuadros de totales por tipo de visita: también son filtros -->
+    <div class="cards-ger-extra" style="margin-bottom:20px;">
+      <div class="card-ger" id="visBoxReunion" title="Clic para filtrar por Reunión (Reunión + Capacitación)">
+        <div class="num" id="visReunionTotal">0</div>
+        <div class="lbl">Reunión (Reunión + Capacitación)</div>
+      </div>
+      <div class="card-ger" id="visBoxComite" title="Clic para filtrar por Comité">
+        <div class="num" id="visComiteTotal">0</div>
+        <div class="lbl">Comité (Laboral + Labora + Convivencia)</div>
+      </div>
+    </div>
+
     <!-- Gráfica combinada por abogado de apoyo -->
     <div class="panel" style="margin-bottom:20px;">
       <h2>Visitas por abogado de apoyo</h2>
-      <div class="panel-sub">Cantidad de reuniones y comités realizados, agrupados por abogado de apoyo.</div>
+      <div class="panel-sub">Cantidad de reuniones y comités realizados, agrupados por abogado de apoyo · clic sobre un abogado para filtrar el resto de la hoja por él.</div>
       <div class="panel-legend">
         <span><span class="sw sw-vis-reunion"></span>Reunión (Reunión + Capacitación)</span>
         <span><span class="sw sw-vis-comite"></span>Comité (Comité Laboral + Comité Labora + Comité de Convivencia)</span>
@@ -766,7 +778,7 @@
     <!-- Gráfica combinada por cliente -->
     <div class="panel">
       <h2>Visitas por cliente</h2>
-      <div class="panel-sub">Misma información, agrupada por cliente.</div>
+      <div class="panel-sub">Misma información, agrupada por cliente · clic sobre un cliente para filtrar el resto de la hoja por él.</div>
       <div class="panel-legend">
         <span><span class="sw sw-vis-reunion"></span>Reunión (Reunión + Capacitación)</span>
         <span><span class="sw sw-vis-comite"></span>Comité (Comité Laboral + Comité Labora + Comité de Convivencia)</span>
@@ -902,6 +914,7 @@ function getVentanaMeses(){
 
 let visitasFilters = { cliente: new Set(), apoyo: new Set(), mes: new Set() };
 let visitasMesInicializado = false;
+let visitasCategoriaFilter = null; // null | 'REUNION' | 'COMITE' — cuadros de arriba, funcionan como filtro
 
 /* Universo base: solo tipos de visita, sin CANCELADA, con fecha de
    compromiso interno dentro de la ventana de los 2 meses vigentes. */
@@ -915,22 +928,58 @@ function getVisitasBasePool(){
     return keysVentana.has(r.fc.slice(0,7));
   });
 }
-function getFilteredVisitas(){
-  return getVisitasBasePool().filter(r=>{
-    if(visitasFilters.cliente.size && !visitasFilters.cliente.has(norm(r.c).toLowerCase())) return false;
-    if(visitasFilters.apoyo.size && !visitasFilters.apoyo.has(norm(r.aa).toLowerCase())) return false;
+/* Aplica, de forma combinable, los filtros propios de esta hoja:
+   Cliente, Abogado de Apoyo, Mes (siempre) y Categoría (Reunión/Comité,
+   activada al hacer clic en los cuadros de arriba). Los parámetros
+   usarCliente/usarApoyo permiten omitir esa dimensión concreta al
+   construir CADA gráfica, para que siga mostrando todas sus barras
+   (y así poder cambiar de selección con un clic), mientras el resto
+   de la hoja sí queda filtrado por la selección vigente. */
+function aplicarFiltrosVisitas(rows, {usarCliente=true, usarApoyo=true} = {}){
+  return rows.filter(r=>{
+    if(usarCliente && visitasFilters.cliente.size && !visitasFilters.cliente.has(norm(r.c).toLowerCase())) return false;
+    if(usarApoyo && visitasFilters.apoyo.size && !visitasFilters.apoyo.has(norm(r.aa).toLowerCase())) return false;
     if(visitasFilters.mes.size && !visitasFilters.mes.has(r.fc.slice(0,7))) return false;
+    if(visitasCategoriaFilter === 'REUNION' && !esVisitaReunion(r)) return false;
+    if(visitasCategoriaFilter === 'COMITE' && !esVisitaComite(r)) return false;
     return true;
   });
+}
+function getFilteredVisitas(){
+  return aplicarFiltrosVisitas(getVisitasBasePool());
 }
 function getVisitasOptionsFor(key){
   let base = getVisitasBasePool();
   if(key !== 'cliente' && visitasFilters.cliente.size) base = base.filter(r=> visitasFilters.cliente.has(norm(r.c).toLowerCase()));
   if(key !== 'apoyo' && visitasFilters.apoyo.size) base = base.filter(r=> visitasFilters.apoyo.has(norm(r.aa).toLowerCase()));
   if(visitasFilters.mes.size) base = base.filter(r=> visitasFilters.mes.has(r.fc.slice(0,7)));
+  if(visitasCategoriaFilter === 'REUNION') base = base.filter(esVisitaReunion);
+  if(visitasCategoriaFilter === 'COMITE') base = base.filter(esVisitaComite);
   const field = key === 'cliente' ? 'c' : 'aa';
   return uniqueSorted(base.map(r=>r[field]));
 }
+
+/* Clic sobre una barra = filtro exclusivo de una sola selección (clic de
+   nuevo sobre la misma = lo quita). Reutiliza visitasFilters.cliente /
+   .apoyo, que también alimentan los desplegables de arriba. */
+function toggleVisitaApoyo(nombre){
+  const yaActivo = visitasFilters.apoyo.size === 1 && visitasFilters.apoyo.has(nombre.toLowerCase());
+  visitasFilters.apoyo = yaActivo ? new Set() : new Set([nombre.toLowerCase()]);
+  onVisitasFiltersChanged();
+}
+function toggleVisitaCliente(nombre){
+  const yaActivo = visitasFilters.cliente.size === 1 && visitasFilters.cliente.has(nombre.toLowerCase());
+  visitasFilters.cliente = yaActivo ? new Set() : new Set([nombre.toLowerCase()]);
+  onVisitasFiltersChanged();
+}
+function toggleVisitaCategoria(valor){
+  visitasCategoriaFilter = (visitasCategoriaFilter === valor) ? null : valor;
+  onVisitasFiltersChanged();
+}
+const _visBoxReunion = document.getElementById('visBoxReunion');
+if(_visBoxReunion) _visBoxReunion.addEventListener('click', ()=> toggleVisitaCategoria('REUNION'));
+const _visBoxComite = document.getElementById('visBoxComite');
+if(_visBoxComite) _visBoxComite.addEventListener('click', ()=> toggleVisitaCategoria('COMITE'));
 
 function renderVisitasMultiSelectOptions(key){
   const capKey = key === 'cliente' ? 'VCliente' : 'VApoyo';
@@ -1008,6 +1057,7 @@ const _btnResetVisitas = document.getElementById('btnResetVisitas');
 if(_btnResetVisitas) _btnResetVisitas.addEventListener('click', ()=>{
   visitasFilters.cliente.clear();
   visitasFilters.apoyo.clear();
+  visitasCategoriaFilter = null;
   const [mesAnterior, mesActual] = getVentanaMeses();
   visitasFilters.mes = new Set([mesAnterior.key, mesActual.key]);
   onVisitasFiltersChanged();
@@ -1039,7 +1089,7 @@ function renderVisitasMesChips(){
 
 /* Agrupa filas de visitas por una dimensión ('c'=cliente, 'aa'=apoyo)
    y pinta un gráfico de barras combinado (2 segmentos: Reunión / Comité). */
-function renderVisitasGrupo(rows, campo, contenedorId){
+function renderVisitasGrupo(rows, campo, contenedorId, tipoFiltro){
   const container = document.getElementById(contenedorId);
   if(!container) return;
   const map = new Map();
@@ -1061,10 +1111,12 @@ function renderVisitasGrupo(rows, campo, contenedorId){
     return;
   }
   const max = entries[0].total || 1;
+  const activeSet = visitasFilters[tipoFiltro];
   entries.forEach(e=>{
     const row = document.createElement('div');
-    row.className = 'bar-row';
-    row.title = `${e.name} — Reunión: ${e.reunion} · Comité: ${e.comite}`;
+    const isActive = activeSet.size === 1 && activeSet.has(e.name.toLowerCase());
+    row.className = 'bar-row clickable' + (isActive ? ' active' : '');
+    row.title = `Clic para filtrar por: ${e.name} — Reunión: ${e.reunion} · Comité: ${e.comite}`;
     const pctTotal = Math.round((e.total/max)*100);
     row.innerHTML = `
       <div class="bname" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</div>
@@ -1075,6 +1127,7 @@ function renderVisitasGrupo(rows, campo, contenedorId){
         </div>
       </div>
       <div class="bval">${e.total}</div>`;
+    row.addEventListener('click', ()=> tipoFiltro === 'apoyo' ? toggleVisitaApoyo(e.name) : toggleVisitaCliente(e.name));
     container.appendChild(row);
   });
 }
@@ -1084,10 +1137,31 @@ function renderVisitas(){
   if(!totalEl) return; // la vista aún no existe en el DOM
   renderVisitasMesChips();
   rebuildVisitasFilterOptions();
-  const filtered = getFilteredVisitas();
+
+  const pool = getVisitasBasePool();
+  const filtered = aplicarFiltrosVisitas(pool);
   totalEl.textContent = filtered.length;
-  renderVisitasGrupo(filtered, 'aa', 'visitasPorApoyo');
-  renderVisitasGrupo(filtered, 'c', 'visitasPorCliente');
+
+  let totReunion = 0, totComite = 0;
+  filtered.forEach(r=>{
+    if(esVisitaReunion(r)) totReunion++;
+    else if(esVisitaComite(r)) totComite++;
+  });
+  const elReunionTotal = document.getElementById('visReunionTotal');
+  const elComiteTotal = document.getElementById('visComiteTotal');
+  if(elReunionTotal) elReunionTotal.textContent = totReunion;
+  if(elComiteTotal) elComiteTotal.textContent = totComite;
+  if(_visBoxReunion) _visBoxReunion.classList.toggle('active', visitasCategoriaFilter === 'REUNION');
+  if(_visBoxComite) _visBoxComite.classList.toggle('active', visitasCategoriaFilter === 'COMITE');
+
+  // Cada gráfica omite SU PROPIA dimensión al filtrar, para seguir
+  // mostrando todas sus barras (y poder cambiar de selección con un
+  // clic), mientras respeta el resto de filtros vigentes (incluida la
+  // categoría Reunión/Comité de los cuadros de arriba).
+  const paraApoyo = aplicarFiltrosVisitas(pool, {usarApoyo:false});
+  const paraCliente = aplicarFiltrosVisitas(pool, {usarCliente:false});
+  renderVisitasGrupo(paraApoyo, 'aa', 'visitasPorApoyo', 'apoyo');
+  renderVisitasGrupo(paraCliente, 'c', 'visitasPorCliente', 'cliente');
 }
 
 function rowClass(r){
@@ -2071,6 +2145,7 @@ function procesarArrayBuffer(arrayBuffer){
     renderAgenda();
     visitasFilters.cliente.clear();
     visitasFilters.apoyo.clear();
+    visitasCategoriaFilter = null;
     visitasMesInicializado = false; // recalcula el mes en curso/anterior con la fecha de hoy
     renderVisitas();
     setLastUpdated(new Date());
