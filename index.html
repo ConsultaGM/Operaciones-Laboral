@@ -196,6 +196,8 @@
   /* ---- Secciones resumen ---- */
   .panels{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;}
   .panel{background:var(--card); border:1px solid var(--borde); border-radius:14px; padding:18px 20px;}
+  .grid-2-cols{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+  @media (max-width: 860px){ .grid-2-cols{grid-template-columns:1fr;} }
   .panel h2{
     margin:0 0 4px; font-size:.85rem; text-transform:uppercase; letter-spacing:.5px;
     color:var(--texto); font-weight:800; border-bottom:2px solid var(--lima); padding-bottom:8px;
@@ -218,7 +220,10 @@
     flex:0 0 42%; max-width:42%; overflow:hidden; text-overflow:ellipsis;
     white-space:nowrap; color:var(--texto);
   }
-  .bar-row .btrack{flex:1; background:#eeeeee; border-radius:6px; height:10px; overflow:hidden; position:relative;}
+  /* Sin fondo gris: solo se ve el color de cada segmento. overflow:visible
+     para que la cifra pueda dibujarse justo al final de la barra, incluso
+     si eso cae más allá del 100% del ancho del track. */
+  .bar-row .btrack{flex:1; background:transparent; border-radius:6px; height:10px; overflow:visible; position:relative;}
   .bar-row .bfill{height:100%; background:linear-gradient(90deg,var(--oliva),var(--lima)); border-radius:6px;}
   .bar-row .bfill-stack{display:flex; height:100%; border-radius:6px; overflow:hidden;}
   .seg-venc{background:var(--rojo);}
@@ -240,9 +245,15 @@
   }
   .month-chip:hover{border-color:var(--oliva);}
   .month-chip.active{background:var(--oliva); border-color:var(--oliva); color:#fff;}
-  .bar-row .bval{flex:0 0 34px; text-align:right; font-weight:700; color:var(--texto); font-size:.82rem;}
+  /* Etiqueta de valor: ya no queda fija/consolidada al final de la fila;
+     se posiciona justo donde termina cada barra (left = % de la barra). */
+  .bar-row .bval{
+    position:absolute; top:50%; transform:translate(6px, -50%);
+    font-weight:700; color:var(--texto); font-size:.78rem; white-space:nowrap;
+    pointer-events:none;
+  }
   .empty-msg{color:var(--gris); font-size:.85rem; padding:10px 0;}
-  .scroll-panel{max-height:340px; overflow-y:auto; padding-right:4px;}
+  .scroll-panel{max-height:340px; overflow-y:auto; padding-right:34px;}
 
   /* ---- Reportería Gerencial ---- */
   .cards-ger-extra{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:20px;}
@@ -272,12 +283,22 @@
   .panel-sub{font-size:.76rem; color:var(--gris); margin:-4px 0 10px;}
 
   .chart-scroll{overflow-x:auto; padding-bottom:6px;}
-  .chart-bars{display:flex; align-items:flex-end; gap:12px; min-height:210px; padding:14px 6px 0;}
-  .chart-bar-col{display:flex; flex-direction:column; align-items:center; width:30px; flex:0 0 auto;}
-  .chart-bar-val{font-size:.68rem; font-weight:700; color:var(--texto); margin-bottom:3px;}
-  .chart-bar-track{width:16px; height:150px; background:#eee; border-radius:4px; display:flex; align-items:flex-end; overflow:hidden;}
-  .chart-bar-fill{width:100%; background:linear-gradient(180deg,var(--lima),var(--oliva)); border-radius:4px 4px 0 0; min-height:2px;}
-  .chart-bar-label{margin-top:6px; font-size:.62rem; color:var(--gris); white-space:nowrap; transform:rotate(-55deg); transform-origin:top left; width:10px;}
+  .chart-bars{display:flex; align-items:flex-end; gap:16px; min-height:230px; padding:26px 8px 0;}
+  .chart-bar-col{display:flex; flex-direction:column; align-items:center; width:26px; flex:0 0 auto;}
+  /* Sin fondo: solo la columna de color. overflow:visible para que la
+     cifra pueda dibujarse por encima del extremo real de cada barra. */
+  .chart-bar-track{width:16px; height:150px; background:transparent; border-radius:4px; display:flex; align-items:flex-end; overflow:visible; position:relative;}
+  .chart-bar-fill{width:100%; background:linear-gradient(180deg,var(--lima),var(--oliva)); border-radius:4px 4px 0 0; min-height:2px; position:relative;}
+  .chart-bar-val{
+    position:absolute; left:50%; bottom:100%; transform:translate(-50%,-4px);
+    font-size:.68rem; font-weight:700; color:var(--texto); white-space:nowrap;
+  }
+  /* Etiqueta de fecha en vertical bajo cada columna: cada una queda
+     confinada al ancho de su propia barra, sin solaparse con las vecinas. */
+  .chart-bar-label{
+    margin-top:8px; font-size:.64rem; color:var(--gris); white-space:nowrap;
+    writing-mode:vertical-rl; text-orientation:mixed; letter-spacing:.3px;
+  }
 
 
   /* ---- Glosario de colores (tabla) ---- */
@@ -675,25 +696,45 @@
       </div>
     </div>
 
-    <!-- Resumen por abogado de apoyo: gráfico de barras combinado.
-         Al hacer clic en un abogado, se filtran el cuadro resumen de
-         arriba y la gráfica diaria de abajo para mostrar solo sus
-         tareas (respetando también el estado seleccionado, si hay). -->
-    <div class="panel" style="margin-bottom:20px;">
-      <h2>Resumen por abogado de apoyo</h2>
-      <div class="panel-sub">Columna "ABOGADO DE APOYO" (M) de la hoja TAREAS 2026 · clic sobre un abogado para filtrar el resto de la hoja por él.</div>
-      <div id="gerApoyoActivo" class="ger-apoyo-activo" style="display:none;">
-        Filtrando por: <b id="gerApoyoActivoNombre"></b>
-        <button id="btnQuitarApoyoGer" type="button">Quitar</button>
+    <!-- Resumen por abogado: dos gráficas que comparten el mismo espacio,
+         una por Abogado de Apoyo (columna M) y otra por Abogado
+         Fidelizador (columna L). Ambas son gráficos de barras combinado
+         (apiladas) y, al hacer clic en un abogado, filtran el cuadro
+         resumen de arriba, la gráfica diaria de abajo y la otra gráfica
+         de abogados (respetando también el estado seleccionado, si hay). -->
+    <div class="grid-2-cols" style="margin-bottom:20px;">
+      <div class="panel">
+        <h2>Resumen por abogado de apoyo</h2>
+        <div class="panel-sub">Columna "ABOGADO DE APOYO" (M) de la hoja TAREAS 2026 · clic sobre un abogado para filtrar el resto de la hoja por él.</div>
+        <div id="gerApoyoActivo" class="ger-apoyo-activo" style="display:none;">
+          Filtrando por: <b id="gerApoyoActivoNombre"></b>
+          <button id="btnQuitarApoyoGer" type="button">Quitar</button>
+        </div>
+        <div class="panel-legend">
+          <span><span class="sw sw-venc"></span>Vencidas</span>
+          <span><span class="sw sw-pend"></span>Pendiente</span>
+          <span><span class="sw sw-susp"></span>Suspendidas</span>
+          <span><span class="sw sw-reun"></span>Reuniones</span>
+          <span><span class="sw sw-pol"></span>Políticas</span>
+        </div>
+        <div class="scroll-panel" id="resumenApoyo"></div>
       </div>
-      <div class="panel-legend">
-        <span><span class="sw sw-venc"></span>Vencidas</span>
-        <span><span class="sw sw-pend"></span>Pendiente</span>
-        <span><span class="sw sw-susp"></span>Suspendidas</span>
-        <span><span class="sw sw-reun"></span>Reuniones</span>
-        <span><span class="sw sw-pol"></span>Políticas</span>
+      <div class="panel">
+        <h2>Resumen por abogado fidelizador</h2>
+        <div class="panel-sub">Columna "ABOGADO FIDELIZADOR" (L) de la hoja TAREAS 2026 · clic sobre un abogado para filtrar el resto de la hoja por él.</div>
+        <div id="gerFidelizadorActivo" class="ger-apoyo-activo" style="display:none;">
+          Filtrando por: <b id="gerFidelizadorActivoNombre"></b>
+          <button id="btnQuitarFidelizadorGer" type="button">Quitar</button>
+        </div>
+        <div class="panel-legend">
+          <span><span class="sw sw-venc"></span>Vencidas</span>
+          <span><span class="sw sw-pend"></span>Pendiente</span>
+          <span><span class="sw sw-susp"></span>Suspendidas</span>
+          <span><span class="sw sw-reun"></span>Reuniones</span>
+          <span><span class="sw sw-pol"></span>Políticas</span>
+        </div>
+        <div class="scroll-panel" id="resumenFidelizador"></div>
       </div>
-      <div class="scroll-panel" id="resumenApoyo"></div>
     </div>
 
     <!-- Gráfica de tareas por día (fecha de compromiso interno, columna E) -->
@@ -1125,8 +1166,8 @@ function renderVisitasGrupo(rows, campo, contenedorId, tipoFiltro){
           <div class="seg-vis-reunion" style="flex:${e.reunion||0}" title="Reunión: ${e.reunion}"></div>
           <div class="seg-vis-comite" style="flex:${e.comite||0}" title="Comité: ${e.comite}"></div>
         </div>
-      </div>
-      <div class="bval">${e.total}</div>`;
+        <div class="bval" style="left:${Math.min(pctTotal,90)}%">${e.total}</div>
+      </div>`;
     row.addEventListener('click', ()=> tipoFiltro === 'apoyo' ? toggleVisitaApoyo(e.name) : toggleVisitaCliente(e.name));
     container.appendChild(row);
   });
@@ -1391,17 +1432,19 @@ function render(){
    Parte siempre de los mismos filtros del Dashboard (Cliente,
    Fidelizador, Apoyo, Tipo, Estado). Sobre ese conjunto, esta vista
    agrega SUS PROPIOS filtros dinámicos (clic en los cuadros y clic
-   en un abogado de la gráfica), que se aplican entre sí:
-     - gerEstadoFilter: 'VENCIDA' | 'PENDIENTE' | 'SUSPENDIDA POR CLIENTE'
-                        | 'REUNION' | 'POLITICA' | null
-     - gerApoyoFilter:  nombre del abogado de apoyo seleccionado | null
+   en un abogado de las gráficas), que se aplican entre sí:
+     - gerEstadoFilter:       'VENCIDA' | 'PENDIENTE' | 'SUSPENDIDA POR CLIENTE'
+                              | 'REUNION' | 'POLITICA' | null
+     - gerApoyoFilter:        nombre del abogado de apoyo seleccionado | null
+     - gerFidelizadorFilter:  nombre del abogado fidelizador seleccionado | null
    ========================================================== */
 let gerEstadoFilter = null;
 let gerApoyoFilter = null;
+let gerFidelizadorFilter = null;
 
 /* Excluye SUBTAREA ABIERTA (igual criterio que el Total del Dashboard)
    y aplica los filtros propios de esta vista sobre un conjunto de filas. */
-function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true} = {}){
+function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true, usarFidelizador=true} = {}){
   return rows.filter(r=>{
     const e = (r.e||'').toUpperCase();
     if(e === 'SUBTAREA ABIERTA') return false;
@@ -1418,6 +1461,9 @@ function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true} = {}){
     if(usarApoyo && gerApoyoFilter){
       if(norm(r.aa).toLowerCase() !== gerApoyoFilter.toLowerCase()) return false;
     }
+    if(usarFidelizador && gerFidelizadorFilter){
+      if(norm(r.af).toLowerCase() !== gerFidelizadorFilter.toLowerCase()) return false;
+    }
     return true;
   });
 }
@@ -1430,13 +1476,17 @@ function toggleGerApoyo(nombre){
   gerApoyoFilter = (gerApoyoFilter && gerApoyoFilter.toLowerCase() === nombre.toLowerCase()) ? null : nombre;
   render();
 }
+function toggleGerFidelizador(nombre){
+  gerFidelizadorFilter = (gerFidelizadorFilter && gerFidelizadorFilter.toLowerCase() === nombre.toLowerCase()) ? null : nombre;
+  render();
+}
 
 function renderGerencial(filtered){
   const elTotal = document.getElementById('gerTotal');
   if(!elTotal) return; // la vista aún no existe en el DOM
 
-  // Cuadros de arriba + gráfica diaria: respetan AMBOS filtros propios
-  // (estado seleccionado Y abogado seleccionado).
+  // Cuadros de arriba + gráfica diaria: respetan TODOS los filtros propios
+  // (estado, abogado de apoyo Y abogado fidelizador seleccionados).
   const paraCuadros = aplicarFiltrosGer(filtered);
 
   let vVenc=0, vPend=0, vSusp=0, vReun=0, vPol=0;
@@ -1472,22 +1522,29 @@ function renderGerencial(filtered){
   if(boxReun) boxReun.classList.toggle('active', gerEstadoFilter === 'REUNION');
   if(boxPol) boxPol.classList.toggle('active', gerEstadoFilter === 'POLITICA');
 
-  // Indicador de abogado seleccionado
+  // Indicador de abogado de apoyo / fidelizador seleccionado
   const elActivo = document.getElementById('gerApoyoActivo');
   const elActivoNombre = document.getElementById('gerApoyoActivoNombre');
   if(elActivo){
     if(gerApoyoFilter){ elActivo.style.display = 'inline-flex'; elActivoNombre.textContent = gerApoyoFilter; }
     else { elActivo.style.display = 'none'; }
   }
+  const elActivoFid = document.getElementById('gerFidelizadorActivo');
+  const elActivoFidNombre = document.getElementById('gerFidelizadorActivoNombre');
+  if(elActivoFid){
+    if(gerFidelizadorFilter){ elActivoFid.style.display = 'inline-flex'; elActivoFidNombre.textContent = gerFidelizadorFilter; }
+    else { elActivoFid.style.display = 'none'; }
+  }
 
-  // Gráfica por abogado: respeta el estado seleccionado (si hay) para
-  // que cada barra muestre esa categoría, pero SIEMPRE muestra a todos
-  // los abogados (sin aplicar el filtro de abogado) para poder cambiar
-  // de selección con un clic.
+  // Cada gráfica de abogados omite SU PROPIA dimensión al filtrar, para
+  // seguir mostrando a todos (y poder cambiar de selección con un
+  // clic), respetando el resto de filtros vigentes.
   const paraApoyo = aplicarFiltrosGer(filtered, {usarApoyo:false});
-  renderResumenApoyo(paraApoyo);
+  renderResumenAbogado(paraApoyo, 'aa', 'resumenApoyo', 'apoyo');
+  const paraFidelizador = aplicarFiltrosGer(filtered, {usarFidelizador:false});
+  renderResumenAbogado(paraFidelizador, 'af', 'resumenFidelizador', 'fidelizador');
 
-  // Gráfica diaria: respeta ambos filtros, igual que los cuadros.
+  // Gráfica diaria: respeta todos los filtros, igual que los cuadros.
   renderGraficoDiario(paraCuadros);
 }
 
@@ -1495,6 +1552,12 @@ const _btnQuitarApoyoGer = document.getElementById('btnQuitarApoyoGer');
 if(_btnQuitarApoyoGer) _btnQuitarApoyoGer.addEventListener('click', (e)=>{
   e.stopPropagation();
   gerApoyoFilter = null;
+  render();
+});
+const _btnQuitarFidelizadorGer = document.getElementById('btnQuitarFidelizadorGer');
+if(_btnQuitarFidelizadorGer) _btnQuitarFidelizadorGer.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  gerFidelizadorFilter = null;
   render();
 });
 const _gerBoxTotal = document.getElementById('gerBoxTotal');
@@ -1510,18 +1573,19 @@ if(_gerBoxReuniones) _gerBoxReuniones.addEventListener('click', ()=> toggleGerEs
 const _gerBoxPoliticas = document.getElementById('gerBoxPoliticas');
 if(_gerBoxPoliticas) _gerBoxPoliticas.addEventListener('click', ()=> toggleGerEstado('POLITICA'));
 
-/* Resumen por Abogado de Apoyo (columna M de 'TAREAS 2026'), como
-   gráfico de barras combinado (apiladas): cada abogado es una barra
+/* Resumen por abogado (de Apoyo o Fidelizador, según 'campo'/'tipoFiltro'),
+   como gráfico de barras combinado (apiladas): cada abogado es una barra
    con hasta 5 segmentos -> Vencidas / Pendiente / Suspendidas /
-   Reuniones / Políticas. Clic sobre un abogado = filtro dinámico
-   (toggleGerApoyo) que afecta los cuadros de arriba y la gráfica diaria. */
-function renderResumenApoyo(filtered){
-  const container = document.getElementById('resumenApoyo');
+   Reuniones / Políticas. Clic sobre un abogado = filtro dinámico que
+   afecta los cuadros de arriba, la otra gráfica de abogados y la
+   gráfica diaria. */
+function renderResumenAbogado(filtered, campo, contenedorId, tipoFiltro){
+  const container = document.getElementById(contenedorId);
   if(!container) return;
 
   const map = new Map();
   filtered.forEach(r=>{
-    const k = norm(r.aa) || '(Sin abogado de apoyo)';
+    const k = norm(r[campo]) || (tipoFiltro === 'apoyo' ? '(Sin abogado de apoyo)' : '(Sin abogado fidelizador)');
     if(!map.has(k)) map.set(k, {venc:0, pend:0, susp:0, reun:0, pol:0});
     const o = map.get(k);
     if(esReunionTipo(r)){ o.reun++; return; }
@@ -1542,10 +1606,11 @@ function renderResumenApoyo(filtered){
     container.innerHTML = '<div class="empty-msg">Sin datos para los filtros seleccionados.</div>';
     return;
   }
+  const activo = tipoFiltro === 'apoyo' ? gerApoyoFilter : gerFidelizadorFilter;
   const max = entries[0].total || 1;
   entries.forEach(e=>{
     const row = document.createElement('div');
-    const isActive = gerApoyoFilter && gerApoyoFilter.toLowerCase() === e.name.toLowerCase();
+    const isActive = activo && activo.toLowerCase() === e.name.toLowerCase();
     row.className = 'bar-row clickable' + (isActive ? ' active' : '');
     row.title = `Clic para filtrar por: ${e.name} — Vencidas: ${e.venc} · Pendiente: ${e.pend} · Suspendidas: ${e.susp} · Reuniones: ${e.reun} · Políticas: ${e.pol}`;
     const pctTotal = Math.round((e.total/max)*100);
@@ -1559,12 +1624,13 @@ function renderResumenApoyo(filtered){
           <div class="seg-reun" style="flex:${e.reun||0}" title="Reuniones: ${e.reun}"></div>
           <div class="seg-pol" style="flex:${e.pol||0}" title="Políticas: ${e.pol}"></div>
         </div>
-      </div>
-      <div class="bval">${e.total}</div>`;
-    row.addEventListener('click', ()=> toggleGerApoyo(e.name));
+        <div class="bval" style="left:${Math.min(pctTotal,90)}%">${e.total}</div>
+      </div>`;
+    row.addEventListener('click', ()=> tipoFiltro === 'apoyo' ? toggleGerApoyo(e.name) : toggleGerFidelizador(e.name));
     container.appendChild(row);
   });
 }
+
 
 const MESES_ABR_MIN = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function fmtDateShort(iso){
@@ -1603,8 +1669,7 @@ function renderGraficoDiario(filtered){
     col.className = 'chart-bar-col';
     col.title = fmtDate(iso) + ': ' + count + ' tarea(s)';
     col.innerHTML = `
-      <div class="chart-bar-val">${count}</div>
-      <div class="chart-bar-track"><div class="chart-bar-fill" style="height:${pct}%"></div></div>
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="height:${pct}%"><div class="chart-bar-val">${count}</div></div></div>
       <div class="chart-bar-label">${fmtDateShort(iso)}</div>`;
     wrap.appendChild(col);
   });
@@ -1627,8 +1692,10 @@ function renderBarList(container, entries, filterKey){
     const pct = max ? Math.round((count/max)*100) : 0;
     row.innerHTML = `
       <div class="bname" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
-      <div class="btrack"><div class="bfill" style="width:${pct}%"></div></div>
-      <div class="bval">${count}</div>`;
+      <div class="btrack">
+        <div class="bfill" style="width:${pct}%"></div>
+        <div class="bval" style="left:${Math.min(pct,90)}%">${count}</div>
+      </div>`;
     if(filterKey){
       row.addEventListener('click', ()=>{
         if(filters[filterKey].has(lower)) filters[filterKey].delete(lower);
@@ -1694,8 +1761,8 @@ function renderResumenCliente(filtered){
           <div class="seg-pend" style="flex:${e.pend||0}" title="Pendiente: ${e.pend}"></div>
           <div class="seg-susp" style="flex:${e.susp||0}" title="Suspendidas: ${e.susp}"></div>
         </div>
-      </div>
-      <div class="bval">${e.total}</div>`;
+        <div class="bval" style="left:${Math.min(pctTotal,90)}%">${e.total}</div>
+      </div>`;
     row.addEventListener('click', ()=>{
       if(filters.cliente.has(lower)) filters.cliente.delete(lower);
       else filters.cliente.add(lower);
@@ -2138,6 +2205,9 @@ function procesarArrayBuffer(arrayBuffer){
     FILTERS_CONFIG.forEach(cfg=>filters[cfg.key].clear());
     filters.estado.clear();
     filters.revisionOnly = false;
+    gerEstadoFilter = null;
+    gerApoyoFilter = null;
+    gerFidelizadorFilter = null;
     rebuildAllFilterOptions();
     render();
     buildAgendaIndex();
