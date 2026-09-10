@@ -17,6 +17,8 @@
     --rojo-bg:#fbdcdb;
     --morado:#7d4fb0;
     --morado-bg:#e9dcf7;
+    --naranja:#d98a1f;
+    --naranja-bg:#faeacb;
     --verde:#3f8f3f;
     --verde-bg:#dcf3dc;
   }
@@ -224,6 +226,20 @@
   .seg-susp{background:var(--gris);}
   .seg-reun{background:var(--morado);}
   .seg-pol{background:var(--oliva);}
+  .seg-vis-reunion{background:var(--morado);}
+  .seg-vis-comite{background:var(--naranja);}
+  .sw-vis-reunion{background:var(--morado);}
+  .sw-vis-comite{background:var(--naranja);}
+
+  /* ---- Visitas a clientes ---- */
+  .month-chips{display:flex; gap:10px; margin:6px 0 4px; flex-wrap:wrap;}
+  .month-chip{
+    border:1px solid var(--borde); background:var(--card); border-radius:999px;
+    padding:7px 16px; font-size:.82rem; font-weight:600; color:var(--gris);
+    cursor:pointer; user-select:none; transition:all .12s ease;
+  }
+  .month-chip:hover{border-color:var(--oliva);}
+  .month-chip.active{background:var(--oliva); border-color:var(--oliva); color:#fff;}
   .bar-row .bval{flex:0 0 34px; text-align:right; font-weight:700; color:var(--texto); font-size:.82rem;}
   .empty-msg{color:var(--gris); font-size:.85rem; padding:10px 0;}
   .scroll-panel{max-height:340px; overflow-y:auto; padding-right:4px;}
@@ -432,6 +448,7 @@
     <button class="view-tab active" id="tabDashboard" type="button">Dashboard</button>
     <button class="view-tab" id="tabAgenda" type="button">Agenda</button>
     <button class="view-tab" id="tabGerencial" type="button">Operaciones</button>
+    <button class="view-tab" id="tabVisitas" type="button">Visitas a Clientes</button>
   </div>
 
   <!-- Filtros: compartidos entre Dashboard y Operaciones, para que al
@@ -688,6 +705,77 @@
 
   </div><!-- /viewGerencial -->
 
+  <!-- ================== VISTA VISITAS A CLIENTES ================== -->
+  <div id="viewVisitas" style="display:none;">
+
+    <div class="panel-sub" id="visitasVentana" style="margin-bottom:14px;"></div>
+
+    <!-- Filtros propios de esta hoja: Cliente, Abogado de Apoyo y Mes -->
+    <div class="filters" id="visitasFiltersBar">
+      <div class="filter-field" id="wrapVCliente">
+        <label>Cliente</label>
+        <button class="ms-btn" id="btnVCliente" type="button">
+          <span id="lblVCliente">Todos</span><span class="chev">▾</span>
+        </button>
+        <div class="ms-panel" id="panelVCliente">
+          <input class="ms-search" placeholder="Buscar cliente...">
+          <div class="ms-options"></div>
+          <div class="ms-actions">
+            <button data-action="all">Seleccionar todos</button>
+            <button data-action="none">Limpiar</button>
+          </div>
+        </div>
+      </div>
+      <div class="filter-field" id="wrapVApoyo">
+        <label>Abogado de Apoyo</label>
+        <button class="ms-btn" id="btnVApoyo" type="button">
+          <span id="lblVApoyo">Todos</span><span class="chev">▾</span>
+        </button>
+        <div class="ms-panel" id="panelVApoyo">
+          <input class="ms-search" placeholder="Buscar abogado...">
+          <div class="ms-options"></div>
+          <div class="ms-actions">
+            <button data-action="all">Seleccionar todos</button>
+            <button data-action="none">Limpiar</button>
+          </div>
+        </div>
+      </div>
+      <div class="filter-field">
+        <label>Mes</label>
+        <div class="month-chips" id="visitasMesChips"></div>
+      </div>
+      <div class="reset-wrap">
+        <label>reset</label>
+        <button class="btn btn-ghost" id="btnResetVisitas">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <div class="total-count">Visitas (reuniones + comités) visibles: <b id="visitasTotalCount">0</b></div>
+
+    <!-- Gráfica combinada por abogado de apoyo -->
+    <div class="panel" style="margin-bottom:20px;">
+      <h2>Visitas por abogado de apoyo</h2>
+      <div class="panel-sub">Cantidad de reuniones y comités realizados, agrupados por abogado de apoyo.</div>
+      <div class="panel-legend">
+        <span><span class="sw sw-vis-reunion"></span>Reunión (Reunión + Capacitación)</span>
+        <span><span class="sw sw-vis-comite"></span>Comité (Comité Laboral + Comité Labora + Comité de Convivencia)</span>
+      </div>
+      <div class="scroll-panel" id="visitasPorApoyo"></div>
+    </div>
+
+    <!-- Gráfica combinada por cliente -->
+    <div class="panel">
+      <h2>Visitas por cliente</h2>
+      <div class="panel-sub">Misma información, agrupada por cliente.</div>
+      <div class="panel-legend">
+        <span><span class="sw sw-vis-reunion"></span>Reunión (Reunión + Capacitación)</span>
+        <span><span class="sw sw-vis-comite"></span>Comité (Comité Laboral + Comité Labora + Comité de Convivencia)</span>
+      </div>
+      <div class="scroll-panel" id="visitasPorCliente"></div>
+    </div>
+
+  </div><!-- /viewVisitas -->
+
   <footer>Dashboard_Tareas_Laboral · generado localmente · los datos no se envían a ningún servidor</footer>
 </div>
 
@@ -705,7 +793,8 @@
    d=DESCRIPCIÓN, e=ESTADO (col. Z), r=ABOGADO REVISIÓN (col. N)
    Se excluyen siempre los registros cuya GESTIÓN = "GESTIONADO".
    ========================================================== */
-let currentData = [];
+let currentData = [];   // TODAS las filas del archivo (incluye GESTIONADO), la usa la hoja "Visitas a clientes"
+let activeData = [];    // solo tareas activas (GESTIÓN != GESTIONADO), la usan Dashboard/Agenda/Operaciones
 
 /* ---------- estado de la Agenda ---------- */
 let reviewerMap = {};         // { "nombre abogado" en minúsculas -> "R - Tag" } construido desde LISTAS!R:T
@@ -782,6 +871,226 @@ const POLITICA_TIPOS = new Set(['POLÍTICAS','POLITICAS']);
 function esReunionTipo(r){ return REUNION_TIPOS.has((r.t||'').toUpperCase()); }
 function esPoliticaTipo(r){ return POLITICA_TIPOS.has((r.t||'').toUpperCase()); }
 
+/* ==========================================================
+   VISITAS A CLIENTES (control mes a mes)
+   Usa currentData COMPLETO (incluye tareas GESTIONADO/cerradas),
+   porque aquí el estado de la tarea no importa; lo único que se
+   excluye siempre es ESTADO = CANCELADA. Solo se consideran los
+   tipos de tarea de "visita": Reunión/Capacitación y los Comités.
+   La ventana de tiempo son SIEMPRE el mes en curso y el mes
+   inmediatamente anterior (según la fecha real de hoy).
+   ========================================================== */
+const VISITA_REUNION_TIPOS = new Set(['REUNIÓN','REUNION','CAPACITACIÓN','CAPACITACION']);
+const VISITA_COMITE_TIPOS = new Set(['COMITÉ LABORAL','COMITE LABORAL','COMITÉ LABORA','COMITE LABORA','COMITÉ DE CONVIVENCIA','COMITE DE CONVIVENCIA']);
+function esVisitaReunion(r){ return VISITA_REUNION_TIPOS.has((r.t||'').toUpperCase()); }
+function esVisitaComite(r){ return VISITA_COMITE_TIPOS.has((r.t||'').toUpperCase()); }
+
+const MESES_ES_FULL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function mesInfo(year, monthIdx){ // monthIdx 0-based
+  return { key: `${year}-${String(monthIdx+1).padStart(2,'0')}`, label: `${MESES_ES_FULL[monthIdx].charAt(0).toUpperCase()}${MESES_ES_FULL[monthIdx].slice(1)} ${year}` };
+}
+/* SIEMPRE se calcula sobre la fecha real de hoy: [mes anterior, mes actual]. */
+function getVentanaMeses(){
+  const hoy = new Date();
+  const y = hoy.getFullYear(), m = hoy.getMonth();
+  const actual = mesInfo(y, m);
+  let py = y, pm = m - 1;
+  if(pm < 0){ pm = 11; py -= 1; }
+  const anterior = mesInfo(py, pm);
+  return [anterior, actual];
+}
+
+let visitasFilters = { cliente: new Set(), apoyo: new Set(), mes: new Set() };
+let visitasMesInicializado = false;
+
+/* Universo base: solo tipos de visita, sin CANCELADA, con fecha de
+   compromiso interno dentro de la ventana de los 2 meses vigentes. */
+function getVisitasBasePool(){
+  const [mesAnterior, mesActual] = getVentanaMeses();
+  const keysVentana = new Set([mesAnterior.key, mesActual.key]);
+  return currentData.filter(r=>{
+    if((r.e||'').toUpperCase() === 'CANCELADA') return false;
+    if(!(esVisitaReunion(r) || esVisitaComite(r))) return false;
+    if(!r.fc) return false;
+    return keysVentana.has(r.fc.slice(0,7));
+  });
+}
+function getFilteredVisitas(){
+  return getVisitasBasePool().filter(r=>{
+    if(visitasFilters.cliente.size && !visitasFilters.cliente.has(norm(r.c).toLowerCase())) return false;
+    if(visitasFilters.apoyo.size && !visitasFilters.apoyo.has(norm(r.aa).toLowerCase())) return false;
+    if(visitasFilters.mes.size && !visitasFilters.mes.has(r.fc.slice(0,7))) return false;
+    return true;
+  });
+}
+function getVisitasOptionsFor(key){
+  let base = getVisitasBasePool();
+  if(key !== 'cliente' && visitasFilters.cliente.size) base = base.filter(r=> visitasFilters.cliente.has(norm(r.c).toLowerCase()));
+  if(key !== 'apoyo' && visitasFilters.apoyo.size) base = base.filter(r=> visitasFilters.apoyo.has(norm(r.aa).toLowerCase()));
+  if(visitasFilters.mes.size) base = base.filter(r=> visitasFilters.mes.has(r.fc.slice(0,7)));
+  const field = key === 'cliente' ? 'c' : 'aa';
+  return uniqueSorted(base.map(r=>r[field]));
+}
+
+function renderVisitasMultiSelectOptions(key){
+  const capKey = key === 'cliente' ? 'VCliente' : 'VApoyo';
+  const panel = document.getElementById('panel'+capKey);
+  if(!panel) return;
+  const optsContainer = panel.querySelector('.ms-options');
+  const searchInput = panel.querySelector('.ms-search');
+  const options = getVisitasOptionsFor(key);
+  const validLower = new Set(options.map(o=>o.toLowerCase()));
+  visitasFilters[key] = new Set(Array.from(visitasFilters[key]).filter(v=>validLower.has(v)));
+
+  function paint(filterText){
+    optsContainer.innerHTML = '';
+    const ft = (filterText||'').toLowerCase();
+    const filteredOpts = options.filter(o=>o.toLowerCase().includes(ft));
+    if(filteredOpts.length === 0){
+      optsContainer.innerHTML = '<div class="ms-empty">Sin resultados.</div>';
+      return;
+    }
+    filteredOpts.forEach(opt=>{
+      const row = document.createElement('label');
+      row.className = 'ms-option';
+      const checked = visitasFilters[key].has(opt.toLowerCase());
+      row.innerHTML = `<input type="checkbox" ${checked?'checked':''}> <span>${escapeHtml(opt)}</span>`;
+      row.querySelector('input').addEventListener('change', (e)=>{
+        if(e.target.checked) visitasFilters[key].add(opt.toLowerCase());
+        else visitasFilters[key].delete(opt.toLowerCase());
+        onVisitasFiltersChanged();
+      });
+      optsContainer.appendChild(row);
+    });
+  }
+  paint(searchInput.value);
+  searchInput.oninput = ()=>paint(searchInput.value);
+
+  const lbl = document.getElementById('lbl'+capKey);
+  const size = visitasFilters[key].size;
+  if(lbl){
+    if(size === 0) lbl.textContent = 'Todos';
+    else if(size === 1) lbl.textContent = Array.from(visitasFilters[key])[0].replace(/(^|\s)\S/g,c=>c.toUpperCase());
+    else lbl.textContent = `${size} seleccionados`;
+  }
+}
+function rebuildVisitasFilterOptions(){
+  renderVisitasMultiSelectOptions('cliente');
+  renderVisitasMultiSelectOptions('apoyo');
+}
+function onVisitasFiltersChanged(){
+  rebuildVisitasFilterOptions();
+  render();
+}
+function setupVisitasMultiSelect(key){
+  const capKey = key === 'cliente' ? 'VCliente' : 'VApoyo';
+  const btn = document.getElementById('btn'+capKey);
+  const panel = document.getElementById('panel'+capKey);
+  if(!btn || !panel) return;
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.ms-panel.open').forEach(p=>p.classList.remove('open'));
+    if(!isOpen) panel.classList.add('open');
+  });
+  panel.addEventListener('click', e=>e.stopPropagation());
+  panel.querySelector('[data-action="all"]').addEventListener('click', ()=>{
+    getVisitasOptionsFor(key).forEach(o=>visitasFilters[key].add(o.toLowerCase()));
+    onVisitasFiltersChanged();
+  });
+  panel.querySelector('[data-action="none"]').addEventListener('click', ()=>{
+    visitasFilters[key].clear();
+    onVisitasFiltersChanged();
+  });
+}
+setupVisitasMultiSelect('cliente');
+setupVisitasMultiSelect('apoyo');
+const _btnResetVisitas = document.getElementById('btnResetVisitas');
+if(_btnResetVisitas) _btnResetVisitas.addEventListener('click', ()=>{
+  visitasFilters.cliente.clear();
+  visitasFilters.apoyo.clear();
+  const [mesAnterior, mesActual] = getVentanaMeses();
+  visitasFilters.mes = new Set([mesAnterior.key, mesActual.key]);
+  onVisitasFiltersChanged();
+});
+
+function renderVisitasMesChips(){
+  const cont = document.getElementById('visitasMesChips');
+  const ventanaEl = document.getElementById('visitasVentana');
+  if(!cont) return;
+  const [mesAnterior, mesActual] = getVentanaMeses();
+  if(!visitasMesInicializado){
+    visitasFilters.mes = new Set([mesAnterior.key, mesActual.key]);
+    visitasMesInicializado = true;
+  }
+  if(ventanaEl) ventanaEl.textContent = `Esta hoja siempre muestra únicamente el mes en curso y el mes inmediatamente anterior: ${mesAnterior.label} y ${mesActual.label}.`;
+  cont.innerHTML = '';
+  [mesAnterior, mesActual].forEach(mi=>{
+    const chip = document.createElement('div');
+    chip.className = 'month-chip' + (visitasFilters.mes.has(mi.key) ? ' active' : '');
+    chip.textContent = mi.label;
+    chip.addEventListener('click', ()=>{
+      if(visitasFilters.mes.has(mi.key)) visitasFilters.mes.delete(mi.key);
+      else visitasFilters.mes.add(mi.key);
+      onVisitasFiltersChanged();
+    });
+    cont.appendChild(chip);
+  });
+}
+
+/* Agrupa filas de visitas por una dimensión ('c'=cliente, 'aa'=apoyo)
+   y pinta un gráfico de barras combinado (2 segmentos: Reunión / Comité). */
+function renderVisitasGrupo(rows, campo, contenedorId){
+  const container = document.getElementById(contenedorId);
+  if(!container) return;
+  const map = new Map();
+  rows.forEach(r=>{
+    const k = norm(r[campo]) || '(Sin dato)';
+    if(!map.has(k)) map.set(k, {reunion:0, comite:0});
+    const o = map.get(k);
+    if(esVisitaReunion(r)) o.reunion++;
+    else if(esVisitaComite(r)) o.comite++;
+  });
+  const entries = Array.from(map.entries())
+    .map(([name,o])=>({name, ...o, total:o.reunion+o.comite}))
+    .filter(e=>e.total > 0)
+    .sort((a,b)=>b.total-a.total);
+
+  container.innerHTML = '';
+  if(entries.length === 0){
+    container.innerHTML = '<div class="empty-msg">Sin visitas para los filtros seleccionados.</div>';
+    return;
+  }
+  const max = entries[0].total || 1;
+  entries.forEach(e=>{
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.title = `${e.name} — Reunión: ${e.reunion} · Comité: ${e.comite}`;
+    const pctTotal = Math.round((e.total/max)*100);
+    row.innerHTML = `
+      <div class="bname" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</div>
+      <div class="btrack">
+        <div class="bfill-stack" style="width:${pctTotal}%">
+          <div class="seg-vis-reunion" style="flex:${e.reunion||0}" title="Reunión: ${e.reunion}"></div>
+          <div class="seg-vis-comite" style="flex:${e.comite||0}" title="Comité: ${e.comite}"></div>
+        </div>
+      </div>
+      <div class="bval">${e.total}</div>`;
+    container.appendChild(row);
+  });
+}
+
+function renderVisitas(){
+  const totalEl = document.getElementById('visitasTotalCount');
+  if(!totalEl) return; // la vista aún no existe en el DOM
+  renderVisitasMesChips();
+  rebuildVisitasFilterOptions();
+  const filtered = getFilteredVisitas();
+  totalEl.textContent = filtered.length;
+  renderVisitasGrupo(filtered, 'aa', 'visitasPorApoyo');
+  renderVisitasGrupo(filtered, 'c', 'visitasPorCliente');
+}
+
 function rowClass(r){
   const e = (r.e||'').toUpperCase();
   if(e === 'VENCIDA') return 'row-vencida';
@@ -816,7 +1125,7 @@ const uploadStatus = document.getElementById('uploadStatus');
 
 /* ---------- multi-select genérico ---------- */
 function getOptionsFor(key){
-  let base = currentData;
+  let base = activeData;
   FILTERS_CONFIG.forEach(cfg=>{
     if(cfg.key !== key && filters[cfg.key].size){
       base = base.filter(r=> filters[cfg.key].has(norm(r[cfg.field]).toLowerCase()));
@@ -946,7 +1255,7 @@ thCompromiso.addEventListener('click', ()=>setSort('fc'));
 
 /* ---------- filtrado ---------- */
 function getFiltered(){
-  return currentData.filter(r=>{
+  return activeData.filter(r=>{
     for(const cfg of FILTERS_CONFIG){
       if(filters[cfg.key].size && !filters[cfg.key].has(norm(r[cfg.field]).toLowerCase())) return false;
     }
@@ -1424,7 +1733,7 @@ function buildAgendaIndex(){
   const byTagPendiente = new Map();
   const apoyoSet = new Set();
 
-  currentData.forEach(r=>{
+  activeData.forEach(r=>{
     const apoyoNorm = norm(r.aa);
     const apoyoKey = apoyoNorm.toLowerCase();
     if(apoyoNorm) apoyoSet.add(apoyoNorm);
@@ -1565,24 +1874,29 @@ if(agendaApoyoSelect){
 const tabDashboard = document.getElementById('tabDashboard');
 const tabAgenda = document.getElementById('tabAgenda');
 const tabGerencial = document.getElementById('tabGerencial');
+const tabVisitas = document.getElementById('tabVisitas');
 const viewDashboard = document.getElementById('viewDashboard');
 const viewAgenda = document.getElementById('viewAgenda');
 const viewGerencial = document.getElementById('viewGerencial');
+const viewVisitas = document.getElementById('viewVisitas');
 const sharedFilters = document.getElementById('sharedFilters');
 function activarPestana(tab){
-  [tabDashboard, tabAgenda, tabGerencial].forEach(t=> t && t.classList.remove('active'));
-  [viewDashboard, viewAgenda, viewGerencial].forEach(v=> v && (v.style.display = 'none'));
-  // Los filtros son compartidos: se ven en Dashboard y en Operaciones
-  // (ambas vistas leen el mismo 'filters' y el mismo getFiltered()),
-  // pero se ocultan en Agenda porque esa vista no los usa.
-  if(sharedFilters) sharedFilters.style.display = (tab === 'agenda') ? 'none' : '';
+  [tabDashboard, tabAgenda, tabGerencial, tabVisitas].forEach(t=> t && t.classList.remove('active'));
+  [viewDashboard, viewAgenda, viewGerencial, viewVisitas].forEach(v=> v && (v.style.display = 'none'));
+  // Los filtros de arriba son compartidos entre Dashboard y Operaciones
+  // (ambas vistas leen el mismo 'filters' y el mismo getFiltered()).
+  // Se ocultan en Agenda y en Visitas, que no los usan (Visitas tiene su
+  // propia barra de filtros, independiente).
+  if(sharedFilters) sharedFilters.style.display = (tab === 'dashboard' || tab === 'gerencial') ? '' : 'none';
   if(tab === 'dashboard'){ tabDashboard.classList.add('active'); viewDashboard.style.display=''; }
   else if(tab === 'agenda'){ tabAgenda.classList.add('active'); viewAgenda.style.display=''; renderAgenda(); }
   else if(tab === 'gerencial'){ tabGerencial.classList.add('active'); viewGerencial.style.display=''; render(); }
+  else if(tab === 'visitas'){ tabVisitas.classList.add('active'); viewVisitas.style.display=''; renderVisitas(); }
 }
 if(tabDashboard) tabDashboard.addEventListener('click', ()=> activarPestana('dashboard'));
 if(tabAgenda) tabAgenda.addEventListener('click', ()=> activarPestana('agenda'));
 if(tabGerencial) tabGerencial.addEventListener('click', ()=> activarPestana('gerencial'));
+if(tabVisitas) tabVisitas.addEventListener('click', ()=> activarPestana('visitas'));
 
 /* ---------- carga de archivo Excel ---------- */
 const HEADER_MAP = {
@@ -1694,7 +2008,7 @@ function parseWorkbook(arrayBuffer){
   const out = [];
   rows.forEach(row=>{
     const g = norm(row[kGestion]).toUpperCase();
-    if(!g || g === 'GESTIONADO') return; // las gestionadas siguen excluidas
+    if(!g) return; // fila vacía/plantilla, se descarta siempre (GESTIONADO ya NO se excluye aquí)
 
     const cliente = norm(row[kCliente]);
     const tipo = norm(row[kTipo]);
@@ -1742,9 +2056,10 @@ function procesarArrayBuffer(arrayBuffer){
     const parsedResult = parseWorkbook(data);
     const parsed = parsedResult.data;
     if(parsed.length === 0){
-      throw new Error('No se encontraron tareas activas (no GESTIONADO) en el archivo.');
+      throw new Error('No se encontraron tareas en el archivo.');
     }
     currentData = parsed;
+    activeData = currentData.filter(r=> r.g !== 'GESTIONADO');
     reviewerMap = parsedResult.reviewerMap;
     reviewerNameByTag = parsedResult.reviewerNameByTag;
     FILTERS_CONFIG.forEach(cfg=>filters[cfg.key].clear());
@@ -1755,8 +2070,12 @@ function procesarArrayBuffer(arrayBuffer){
     buildAgendaIndex();
     populateAgendaApoyoOptions();
     renderAgenda();
+    visitasFilters.cliente.clear();
+    visitasFilters.apoyo.clear();
+    visitasMesInicializado = false; // recalcula el mes en curso/anterior con la fecha de hoy
+    renderVisitas();
     setLastUpdated(new Date());
-    uploadStatus.textContent = `Actualizado: ${parsed.length} tareas activas cargadas.`;
+    uploadStatus.textContent = `Actualizado: ${activeData.length} tareas activas cargadas (${currentData.length} en total, incluye gestionadas).`;
     uploadStatus.className = 'upload-status ok';
     const btnGuardar = document.getElementById('btnGuardar');
     if(btnGuardar){ btnGuardar.disabled = false; btnGuardar.title = 'Descarga el HTML con los datos actuales para compartirlo'; }
@@ -1807,7 +2126,9 @@ document.getElementById('btnActualizar').addEventListener('click', ()=>{
 function generarHtmlActualizado(){
   let html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
   const dataJson = JSON.stringify(currentData);
-  html = html.replace('let currentData = [];', 'let currentData = ' + dataJson + ';');
+  html = html.replace('let currentData = [];   // TODAS las filas del archivo (incluye GESTIONADO), la usa la hoja "Visitas a clientes"', 'let currentData = ' + dataJson + ';');
+  const activeJson = JSON.stringify(activeData);
+  html = html.replace('let activeData = [];    // solo tareas activas (GESTIÓN != GESTIONADO), la usan Dashboard/Agenda/Operaciones', 'let activeData = ' + activeJson + ';');
   const reviewerJson = JSON.stringify(reviewerMap);
   html = html.replace('let reviewerMap = {};', 'let reviewerMap = ' + reviewerJson + ';');
   const reviewerNameJson = JSON.stringify(reviewerNameByTag);
