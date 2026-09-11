@@ -21,6 +21,8 @@
     --naranja-bg:#faeacb;
     --verde:#3f8f3f;
     --verde-bg:#dcf3dc;
+    --amarillo:#d4a017;
+    --amarillo-bg:#fbf0d1;
   }
   *{box-sizing:border-box;}
   body{
@@ -206,9 +208,9 @@
   .panel-legend span{display:inline-flex; align-items:center; gap:5px;}
   .sw{width:10px; height:10px; border-radius:3px; display:inline-block;}
   .sw-venc{background:var(--rojo);}
-  .sw-pend{background:var(--verde);}
-  .sw-susp{background:var(--gris);}
-  .sw-reun{background:var(--morado);}
+  .sw-pend{background:var(--amarillo);}
+  .sw-susp{background:var(--morado);}
+  .sw-reun{background:var(--verde);}
   .sw-pol{background:var(--oliva);}
 
   .bar-row{display:flex; align-items:center; gap:10px; padding:6px 4px; font-size:.85rem; border-radius:6px;}
@@ -227,9 +229,9 @@
   .bar-row .bfill{height:100%; background:linear-gradient(90deg,var(--oliva),var(--lima)); border-radius:6px;}
   .bar-row .bfill-stack{display:flex; height:100%; border-radius:6px; overflow:hidden;}
   .seg-venc{background:var(--rojo);}
-  .seg-pend{background:var(--verde);}
-  .seg-susp{background:var(--gris);}
-  .seg-reun{background:var(--morado);}
+  .seg-pend{background:var(--amarillo);}
+  .seg-susp{background:var(--morado);}
+  .seg-reun{background:var(--verde);}
   .seg-pol{background:var(--oliva);}
   .seg-vis-reunion{background:var(--morado);}
   .seg-vis-comite{background:var(--naranja);}
@@ -256,7 +258,7 @@
   .scroll-panel{max-height:340px; overflow-y:auto; padding-right:34px;}
 
   /* ---- Reportería Gerencial ---- */
-  .cards-ger-extra{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:20px;}
+  .cards-ger-extra{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:20px; align-items:start;}
   .card-ger{
     background:var(--card); border:1px solid var(--borde); border-radius:14px;
     padding:16px 18px; text-align:center; border-top:4px solid var(--oliva);
@@ -266,6 +268,18 @@
   .card-ger.active{box-shadow:inset 0 0 0 2px var(--oliva); background:#f4f6e6;}
   .card-ger .num{font-size:1.9rem; font-weight:800; color:var(--texto); line-height:1.1;}
   .card-ger .lbl{margin-top:6px; font-size:.74rem; letter-spacing:.5px; text-transform:uppercase; color:var(--gris); font-weight:700;}
+  /* Desglose pequeño debajo del cuadro "Reuniones": Reuniones, Audiencias,
+     Capacitación y Comités. También son filtros (clic). */
+  .cards-ger-sub{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px;}
+  .card-ger-sub{
+    background:var(--card); border:1px solid var(--borde); border-radius:10px;
+    padding:8px 6px; text-align:center; cursor:pointer; user-select:none;
+    transition:box-shadow .15s ease;
+  }
+  .card-ger-sub:hover{box-shadow:0 3px 10px rgba(0,0,0,.08);}
+  .card-ger-sub.active{box-shadow:inset 0 0 0 2px var(--oliva); background:#f4f6e6;}
+  .card-ger-sub .num-sm{font-size:1.15rem; font-weight:800; color:var(--texto); line-height:1.1;}
+  .card-ger-sub .lbl-sm{margin-top:3px; font-size:.62rem; letter-spacing:.3px; text-transform:uppercase; color:var(--gris); font-weight:700;}
   .ger-apoyo-activo{
     font-size:.78rem; color:#4a5210; background:#eef3cf; border:1px solid var(--oliva);
     border-radius:8px; padding:6px 10px; margin-bottom:10px; display:inline-flex; align-items:center; gap:8px;
@@ -686,9 +700,29 @@
     </div>
 
     <div class="cards-ger-extra">
-      <div class="card-ger" id="gerBoxReuniones" title="Clic para filtrar por reuniones">
-        <div class="num" id="gerReuniones">0</div>
-        <div class="lbl">Reuniones · Audiencias · Capacitación · Comités</div>
+      <div>
+        <div class="card-ger" id="gerBoxReuniones" title="Clic para filtrar por reuniones">
+          <div class="num" id="gerReuniones">0</div>
+          <div class="lbl">Reuniones · Audiencias · Capacitación · Comités</div>
+        </div>
+        <div class="cards-ger-sub">
+          <div class="card-ger-sub" id="gerBoxSubReuniones" title="Clic para filtrar por tipo Reunión">
+            <div class="num-sm" id="gerSubReuniones">0</div>
+            <div class="lbl-sm">Reuniones</div>
+          </div>
+          <div class="card-ger-sub" id="gerBoxSubAudiencias" title="Clic para filtrar por tipo Audiencia">
+            <div class="num-sm" id="gerSubAudiencias">0</div>
+            <div class="lbl-sm">Audiencias</div>
+          </div>
+          <div class="card-ger-sub" id="gerBoxSubCapacitacion" title="Clic para filtrar por tipo Capacitación">
+            <div class="num-sm" id="gerSubCapacitacion">0</div>
+            <div class="lbl-sm">Capacitación</div>
+          </div>
+          <div class="card-ger-sub" id="gerBoxSubComites" title="Clic para filtrar por los Comités">
+            <div class="num-sm" id="gerSubComites">0</div>
+            <div class="lbl-sm">Comités</div>
+          </div>
+        </div>
       </div>
       <div class="card-ger" id="gerBoxPoliticas" title="Clic para filtrar por políticas">
         <div class="num" id="gerPoliticas">0</div>
@@ -923,6 +957,18 @@ const REUNION_TIPOS = new Set(['REUNIÓN','REUNION','AUDIENCIA','CAPACITACIÓN',
 const POLITICA_TIPOS = new Set(['POLÍTICAS','POLITICAS']);
 function esReunionTipo(r){ return REUNION_TIPOS.has((r.t||'').toUpperCase()); }
 function esPoliticaTipo(r){ return POLITICA_TIPOS.has((r.t||'').toUpperCase()); }
+
+/* Desglose interno de la familia "Reuniones": a qué subcategoría
+   pertenece cada tarea (para los 4 cuadros pequeños de Operaciones). */
+const COMITE_TIPOS = new Set(['COMITÉ LABORAL','COMITE LABORAL','COMITÉ LABORA','COMITE LABORA','COMITÉ DE CONVIVENCIA','COMITE DE CONVIVENCIA']);
+function subTipoReunion(r){
+  const t = (r.t||'').toUpperCase();
+  if(t === 'AUDIENCIA') return 'AUDIENCIAS';
+  if(COMITE_TIPOS.has(t)) return 'COMITES';
+  if(t === 'REUNIÓN' || t === 'REUNION') return 'REUNIONES';
+  if(t === 'CAPACITACIÓN' || t === 'CAPACITACION') return 'CAPACITACION';
+  return null;
+}
 
 /* ==========================================================
    VISITAS A CLIENTES (control mes a mes)
@@ -1437,10 +1483,13 @@ function render(){
                               | 'REUNION' | 'POLITICA' | null
      - gerApoyoFilter:        nombre del abogado de apoyo seleccionado | null
      - gerFidelizadorFilter:  nombre del abogado fidelizador seleccionado | null
+     - gerReunionSubFilter:   'REUNIONES' | 'AUDIENCIAS' | 'CAPACITACION' | 'COMITES' | null
+                              (desglose fino DENTRO de la familia Reuniones)
    ========================================================== */
 let gerEstadoFilter = null;
 let gerApoyoFilter = null;
 let gerFidelizadorFilter = null;
+let gerReunionSubFilter = null;
 
 /* Excluye SUBTAREA ABIERTA (igual criterio que el Total del Dashboard)
    y aplica los filtros propios de esta vista sobre un conjunto de filas. */
@@ -1451,7 +1500,10 @@ function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true, usarFidelizad
     const isReun = esReunionTipo(r);
     const isPol = esPoliticaTipo(r);
     if(usarEstado && gerEstadoFilter){
-      if(gerEstadoFilter === 'REUNION'){ if(!isReun) return false; }
+      if(gerEstadoFilter === 'REUNION'){
+        if(!isReun) return false;
+        if(gerReunionSubFilter && subTipoReunion(r) !== gerReunionSubFilter) return false;
+      }
       else if(gerEstadoFilter === 'POLITICA'){ if(!isPol) return false; }
       else {
         if(isReun || isPol) return false;
@@ -1470,6 +1522,18 @@ function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true, usarFidelizad
 
 function toggleGerEstado(valor){
   gerEstadoFilter = (gerEstadoFilter === valor) ? null : valor;
+  gerReunionSubFilter = null; // cambiar de categoría principal limpia el desglose fino
+  render();
+}
+/* Los 4 cuadros pequeños (Reuniones/Audiencias/Capacitación/Comités):
+   seleccionan la familia "REUNION" y además el subtipo específico. */
+function toggleGerReunionSub(valor){
+  if(gerEstadoFilter === 'REUNION' && gerReunionSubFilter === valor){
+    gerReunionSubFilter = null; // clic de nuevo sobre el mismo = lo quita
+  } else {
+    gerEstadoFilter = 'REUNION';
+    gerReunionSubFilter = valor;
+  }
   render();
 }
 function toggleGerApoyo(nombre){
@@ -1490,8 +1554,17 @@ function renderGerencial(filtered){
   const paraCuadros = aplicarFiltrosGer(filtered);
 
   let vVenc=0, vPend=0, vSusp=0, vReun=0, vPol=0;
+  let vSubReun=0, vSubAud=0, vSubCap=0, vSubCom=0;
   paraCuadros.forEach(r=>{
-    if(esReunionTipo(r)){ vReun++; return; }
+    if(esReunionTipo(r)){
+      vReun++;
+      const sub = subTipoReunion(r);
+      if(sub === 'REUNIONES') vSubReun++;
+      else if(sub === 'AUDIENCIAS') vSubAud++;
+      else if(sub === 'CAPACITACION') vSubCap++;
+      else if(sub === 'COMITES') vSubCom++;
+      return;
+    }
     if(esPoliticaTipo(r)){ vPol++; return; }
     const e = (r.e||'').toUpperCase();
     if(e === 'VENCIDA') vVenc++;
@@ -1507,6 +1580,10 @@ function renderGerencial(filtered){
   document.getElementById('gerReuniones').textContent = vReun;
   document.getElementById('gerPoliticas').textContent = vPol;
   document.getElementById('gerTotalGeneral').textContent = totalPrincipal + vReun + vPol;
+  document.getElementById('gerSubReuniones').textContent = vSubReun;
+  document.getElementById('gerSubAudiencias').textContent = vSubAud;
+  document.getElementById('gerSubCapacitacion').textContent = vSubCap;
+  document.getElementById('gerSubComites').textContent = vSubCom;
 
   // Resaltar el cuadro activo (o ninguno si no hay filtro de estado)
   const boxTotal = document.getElementById('gerBoxTotal');
@@ -1519,8 +1596,17 @@ function renderGerencial(filtered){
   if(boxVenc) boxVenc.classList.toggle('active', gerEstadoFilter === 'VENCIDA');
   if(boxPend) boxPend.classList.toggle('active', gerEstadoFilter === 'PENDIENTE');
   if(boxSusp) boxSusp.classList.toggle('active', gerEstadoFilter === 'SUSPENDIDA POR CLIENTE');
-  if(boxReun) boxReun.classList.toggle('active', gerEstadoFilter === 'REUNION');
+  if(boxReun) boxReun.classList.toggle('active', gerEstadoFilter === 'REUNION' && !gerReunionSubFilter);
   if(boxPol) boxPol.classList.toggle('active', gerEstadoFilter === 'POLITICA');
+  const boxSubReun = document.getElementById('gerBoxSubReuniones');
+  const boxSubAud = document.getElementById('gerBoxSubAudiencias');
+  const boxSubCap = document.getElementById('gerBoxSubCapacitacion');
+  const boxSubCom = document.getElementById('gerBoxSubComites');
+  const reunActiva = gerEstadoFilter === 'REUNION';
+  if(boxSubReun) boxSubReun.classList.toggle('active', reunActiva && gerReunionSubFilter === 'REUNIONES');
+  if(boxSubAud) boxSubAud.classList.toggle('active', reunActiva && gerReunionSubFilter === 'AUDIENCIAS');
+  if(boxSubCap) boxSubCap.classList.toggle('active', reunActiva && gerReunionSubFilter === 'CAPACITACION');
+  if(boxSubCom) boxSubCom.classList.toggle('active', reunActiva && gerReunionSubFilter === 'COMITES');
 
   // Indicador de abogado de apoyo / fidelizador seleccionado
   const elActivo = document.getElementById('gerApoyoActivo');
@@ -1561,7 +1647,7 @@ if(_btnQuitarFidelizadorGer) _btnQuitarFidelizadorGer.addEventListener('click', 
   render();
 });
 const _gerBoxTotal = document.getElementById('gerBoxTotal');
-if(_gerBoxTotal) _gerBoxTotal.addEventListener('click', ()=>{ gerEstadoFilter = null; render(); });
+if(_gerBoxTotal) _gerBoxTotal.addEventListener('click', ()=>{ gerEstadoFilter = null; gerReunionSubFilter = null; render(); });
 const _gerBoxVencidas = document.getElementById('gerBoxVencidas');
 if(_gerBoxVencidas) _gerBoxVencidas.addEventListener('click', ()=> toggleGerEstado('VENCIDA'));
 const _gerBoxPendientes = document.getElementById('gerBoxPendientes');
@@ -1572,6 +1658,14 @@ const _gerBoxReuniones = document.getElementById('gerBoxReuniones');
 if(_gerBoxReuniones) _gerBoxReuniones.addEventListener('click', ()=> toggleGerEstado('REUNION'));
 const _gerBoxPoliticas = document.getElementById('gerBoxPoliticas');
 if(_gerBoxPoliticas) _gerBoxPoliticas.addEventListener('click', ()=> toggleGerEstado('POLITICA'));
+const _gerBoxSubReuniones = document.getElementById('gerBoxSubReuniones');
+if(_gerBoxSubReuniones) _gerBoxSubReuniones.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerReunionSub('REUNIONES'); });
+const _gerBoxSubAudiencias = document.getElementById('gerBoxSubAudiencias');
+if(_gerBoxSubAudiencias) _gerBoxSubAudiencias.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerReunionSub('AUDIENCIAS'); });
+const _gerBoxSubCapacitacion = document.getElementById('gerBoxSubCapacitacion');
+if(_gerBoxSubCapacitacion) _gerBoxSubCapacitacion.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerReunionSub('CAPACITACION'); });
+const _gerBoxSubComites = document.getElementById('gerBoxSubComites');
+if(_gerBoxSubComites) _gerBoxSubComites.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerReunionSub('COMITES'); });
 
 /* Resumen por abogado (de Apoyo o Fidelizador, según 'campo'/'tipoFiltro'),
    como gráfico de barras combinado (apiladas): cada abogado es una barra
@@ -2208,6 +2302,7 @@ function procesarArrayBuffer(arrayBuffer){
     gerEstadoFilter = null;
     gerApoyoFilter = null;
     gerFidelizadorFilter = null;
+    gerReunionSubFilter = null;
     rebuildAllFilterOptions();
     render();
     buildAgendaIndex();
