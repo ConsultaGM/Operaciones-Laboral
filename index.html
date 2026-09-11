@@ -1465,10 +1465,11 @@ function renderVisitas(){
 
   // Comité Clientes / Reuniones Clientes: matriz Mes-1 / Mes actual.
   // Ignoran el filtro de "mes" (chips) porque necesitan comparar SIEMPRE
-  // los dos meses lado a lado, e ignoran la categoría Reunión/Comité de
-  // los cuadros de arriba porque cada matriz ya tiene su categoría fija.
-  // Sí respetan Cliente y Abogado de Apoyo.
-  const paraMatriz = aplicarFiltrosVisitas(pool, {usarMes:false, usarCategoria:false});
+  // los dos meses lado a lado, pero SÍ respetan Cliente, Abogado de
+  // Apoyo y la categoría/desglose fino de los cuadros de arriba (Total,
+  // Reunión/Capacitación, Comité Laboral/Convivencia) — igual que el
+  // resto de gráficas de esta hoja.
+  const paraMatriz = aplicarFiltrosVisitas(pool, {usarMes:false});
   renderMatrizClientes(paraMatriz.filter(esVisitaComite), 'comiteClientesMatrix', 'comite');
   renderMatrizClientes(paraMatriz.filter(esVisitaReunion), 'reunionClientesMatrix', 'reunion');
 }
