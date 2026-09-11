@@ -291,9 +291,32 @@
   .ger-apoyo-activo button:hover{background:var(--lima); color:#2b2b2d;}
   .ger-total-general{
     background:#eef3cf; border:1px solid var(--oliva); border-radius:12px;
-    padding:12px 16px; margin-bottom:14px; font-size:.88rem; color:#4a5210; font-weight:600;
+    padding:14px 18px; margin-bottom:14px;
+    display:flex; align-items:center; gap:16px;
   }
-  .ger-total-general b{font-size:1.05rem;}
+  .ger-total-general .gtg-num{
+    font-size:2rem; font-weight:800; color:#4a5210; line-height:1;
+    flex:0 0 auto; padding-right:16px; border-right:1px solid var(--oliva);
+  }
+  .ger-total-general .gtg-label{font-size:.82rem; color:#4a5210; font-weight:600; line-height:1.35;}
+  .ger-total-general .gtg-label small{display:block; font-weight:500; opacity:.8; font-size:.76rem;}
+  /* Total a la izquierda, cubriendo la altura completa de las filas de
+     cuadros de la derecha (Total tareas/Vencidas/Pendiente/Suspendidas
+     arriba, Reuniones/Políticas abajo). */
+  .ger-summary-layout{display:grid; grid-template-columns:150px 1fr; gap:16px; margin-bottom:20px;}
+  .ger-total-side{
+    background:#eef3cf; border:1px solid var(--oliva); border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:16px 10px; cursor:pointer; user-select:none; transition:box-shadow .15s ease;
+  }
+  .ger-total-side:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);}
+  .ger-total-side.active{box-shadow:inset 0 0 0 2px var(--oliva);}
+  .ger-total-side .gts-lbl{font-size:.78rem; letter-spacing:.5px; text-transform:uppercase; color:#4a5210; font-weight:700;}
+  .ger-total-side .gts-num{font-size:2.4rem; font-weight:800; color:#4a5210; line-height:1.1; margin-top:8px;}
+  .ger-summary-right{display:flex; flex-direction:column; gap:14px;}
+  .ger-summary-right .cards-main{margin-bottom:0;}
+  .ger-summary-right .cards-ger-extra{margin-bottom:0;}
+  @media (max-width: 640px){ .ger-summary-layout{grid-template-columns:1fr;} .ger-total-side{flex-direction:row; justify-content:center; gap:10px; padding:12px;} .ger-total-side .gts-num{margin-top:0;} }
   .panel-sub{font-size:.76rem; color:var(--gris); margin:-4px 0 10px;}
 
   .chart-scroll{overflow-x:auto; padding-bottom:6px;}
@@ -675,58 +698,62 @@
   <!-- ================== VISTA OPERACIONES ================== -->
   <div id="viewGerencial" style="display:none;">
 
-    <div class="ger-total-general">
-      Total general (Cuadro resumen + Reuniones + Políticas): <b id="gerTotalGeneral">0</b>
-    </div>
-
     <!-- Cuadro resumen: usa exactamente los mismos filtros del Dashboard,
          excluyendo Reuniones y Políticas para que la suma de todos los
-         cuadros coincida con el total general de arriba. Cada cuadro es
-         además un FILTRO: al hacer clic, se filtran la gráfica por
-         abogado y la gráfica diaria de abajo. -->
-    <div class="cards-main">
-      <div class="card card-total" id="gerBoxTotal" title="Clic para quitar el filtro de estado">
-        <div class="num" id="gerTotal">0</div><div class="lbl">Total</div>
+         cuadros coincida con el total general de la izquierda. Cada
+         cuadro es además un FILTRO: al hacer clic, se filtran la
+         gráfica por abogado y la gráfica diaria de abajo. -->
+    <div class="ger-summary-layout">
+      <div class="ger-total-side" id="gerBoxTotalGeneral" title="Total general (todas las tareas de esta hoja)">
+        <div class="gts-lbl">Total</div>
+        <div class="gts-num" id="gerTotalGeneral">0</div>
       </div>
-      <div class="card card-vencidas" id="gerBoxVencidas" title="Clic para filtrar por vencidas">
-        <div class="num" id="gerVencidas">0</div><div class="lbl">Vencidas</div>
-      </div>
-      <div class="card card-pendientes" id="gerBoxPendientes" title="Clic para filtrar por pendiente">
-        <div class="num" id="gerPendientes">0</div><div class="lbl">Pendiente</div>
-      </div>
-      <div class="card card-suspendidas" id="gerBoxSuspendidas" title="Clic para filtrar por suspendidas">
-        <div class="num" id="gerSuspendidas">0</div><div class="lbl">Suspendidas</div>
-      </div>
-    </div>
+      <div class="ger-summary-right">
+        <div class="cards-main">
+          <div class="card card-total" id="gerBoxTotal" title="Clic para quitar el filtro de estado">
+            <div class="num" id="gerTotal">0</div><div class="lbl">Total tareas</div>
+          </div>
+          <div class="card card-vencidas" id="gerBoxVencidas" title="Clic para filtrar por vencidas">
+            <div class="num" id="gerVencidas">0</div><div class="lbl">Vencidas</div>
+          </div>
+          <div class="card card-pendientes" id="gerBoxPendientes" title="Clic para filtrar por pendiente">
+            <div class="num" id="gerPendientes">0</div><div class="lbl">Pendiente</div>
+          </div>
+          <div class="card card-suspendidas" id="gerBoxSuspendidas" title="Clic para filtrar por suspendidas">
+            <div class="num" id="gerSuspendidas">0</div><div class="lbl">Suspendidas</div>
+          </div>
+        </div>
 
-    <div class="cards-ger-extra">
-      <div>
-        <div class="card-ger" id="gerBoxReuniones" title="Clic para filtrar por reuniones">
-          <div class="num" id="gerReuniones">0</div>
-          <div class="lbl">Reuniones · Audiencias · Capacitación · Comités</div>
+        <div class="cards-ger-extra">
+          <div>
+            <div class="card-ger" id="gerBoxReuniones" title="Clic para filtrar por reuniones">
+              <div class="num" id="gerReuniones">0</div>
+              <div class="lbl">Reuniones · Audiencias · Capacitación · Comités</div>
+            </div>
+            <div class="cards-ger-sub">
+              <div class="card-ger-sub" id="gerBoxSubReuniones" title="Clic para filtrar por tipo Reunión">
+                <div class="num-sm" id="gerSubReuniones">0</div>
+                <div class="lbl-sm">Reuniones</div>
+              </div>
+              <div class="card-ger-sub" id="gerBoxSubAudiencias" title="Clic para filtrar por tipo Audiencia">
+                <div class="num-sm" id="gerSubAudiencias">0</div>
+                <div class="lbl-sm">Audiencias</div>
+              </div>
+              <div class="card-ger-sub" id="gerBoxSubCapacitacion" title="Clic para filtrar por tipo Capacitación">
+                <div class="num-sm" id="gerSubCapacitacion">0</div>
+                <div class="lbl-sm">Capacitación</div>
+              </div>
+              <div class="card-ger-sub" id="gerBoxSubComites" title="Clic para filtrar por los Comités">
+                <div class="num-sm" id="gerSubComites">0</div>
+                <div class="lbl-sm">Comités</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-ger" id="gerBoxPoliticas" title="Clic para filtrar por políticas">
+            <div class="num" id="gerPoliticas">0</div>
+            <div class="lbl">Políticas</div>
+          </div>
         </div>
-        <div class="cards-ger-sub">
-          <div class="card-ger-sub" id="gerBoxSubReuniones" title="Clic para filtrar por tipo Reunión">
-            <div class="num-sm" id="gerSubReuniones">0</div>
-            <div class="lbl-sm">Reuniones</div>
-          </div>
-          <div class="card-ger-sub" id="gerBoxSubAudiencias" title="Clic para filtrar por tipo Audiencia">
-            <div class="num-sm" id="gerSubAudiencias">0</div>
-            <div class="lbl-sm">Audiencias</div>
-          </div>
-          <div class="card-ger-sub" id="gerBoxSubCapacitacion" title="Clic para filtrar por tipo Capacitación">
-            <div class="num-sm" id="gerSubCapacitacion">0</div>
-            <div class="lbl-sm">Capacitación</div>
-          </div>
-          <div class="card-ger-sub" id="gerBoxSubComites" title="Clic para filtrar por los Comités">
-            <div class="num-sm" id="gerSubComites">0</div>
-            <div class="lbl-sm">Comités</div>
-          </div>
-        </div>
-      </div>
-      <div class="card-ger" id="gerBoxPoliticas" title="Clic para filtrar por políticas">
-        <div class="num" id="gerPoliticas">0</div>
-        <div class="lbl">Políticas</div>
       </div>
     </div>
 
@@ -1586,12 +1613,14 @@ function renderGerencial(filtered){
   document.getElementById('gerSubComites').textContent = vSubCom;
 
   // Resaltar el cuadro activo (o ninguno si no hay filtro de estado)
+  const boxTotalGeneral = document.getElementById('gerBoxTotalGeneral');
   const boxTotal = document.getElementById('gerBoxTotal');
   const boxVenc = document.getElementById('gerBoxVencidas');
   const boxPend = document.getElementById('gerBoxPendientes');
   const boxSusp = document.getElementById('gerBoxSuspendidas');
   const boxReun = document.getElementById('gerBoxReuniones');
   const boxPol = document.getElementById('gerBoxPoliticas');
+  if(boxTotalGeneral) boxTotalGeneral.classList.toggle('active', !gerEstadoFilter && !gerApoyoFilter && !gerFidelizadorFilter);
   if(boxTotal) boxTotal.classList.toggle('active', !gerEstadoFilter);
   if(boxVenc) boxVenc.classList.toggle('active', gerEstadoFilter === 'VENCIDA');
   if(boxPend) boxPend.classList.toggle('active', gerEstadoFilter === 'PENDIENTE');
@@ -1648,6 +1677,16 @@ if(_btnQuitarFidelizadorGer) _btnQuitarFidelizadorGer.addEventListener('click', 
 });
 const _gerBoxTotal = document.getElementById('gerBoxTotal');
 if(_gerBoxTotal) _gerBoxTotal.addEventListener('click', ()=>{ gerEstadoFilter = null; gerReunionSubFilter = null; render(); });
+const _gerBoxTotalGeneral = document.getElementById('gerBoxTotalGeneral');
+if(_gerBoxTotalGeneral) _gerBoxTotalGeneral.addEventListener('click', ()=>{
+  // Representa el total de TODO: al hacer clic limpia cualquier filtro
+  // propio de esta hoja (estado, abogado de apoyo y fidelizador).
+  gerEstadoFilter = null;
+  gerReunionSubFilter = null;
+  gerApoyoFilter = null;
+  gerFidelizadorFilter = null;
+  render();
+});
 const _gerBoxVencidas = document.getElementById('gerBoxVencidas');
 if(_gerBoxVencidas) _gerBoxVencidas.addEventListener('click', ()=> toggleGerEstado('VENCIDA'));
 const _gerBoxPendientes = document.getElementById('gerBoxPendientes');
