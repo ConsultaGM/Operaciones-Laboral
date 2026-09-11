@@ -340,6 +340,10 @@
     font-size:.72rem; cursor:pointer;
   }
   .ger-apoyo-activo button:hover{background:var(--lima); color:#2b2b2d;}
+  .aviso-box{
+    background:#eaf1fb; border:1px solid #6a8fc9; border-radius:10px;
+    padding:10px 14px; margin-bottom:14px; font-size:.82rem; color:#2c4a76; font-weight:600;
+  }
   .ger-total-general{
     background:#eef3cf; border:1px solid var(--oliva); border-radius:12px;
     padding:14px 18px; margin-bottom:14px;
@@ -861,6 +865,8 @@
   <!-- ================== VISTA VISITAS A CLIENTES ================== -->
   <div id="viewVisitas" style="display:none;">
 
+    <div class="aviso-box">Estos datos corresponden al mes en curso y al mes inmediatamente anterior, podrás filtrarlo en la parte superior.</div>
+
     <div class="panel-sub" id="visitasVentana" style="margin-bottom:14px;"></div>
 
     <!-- Filtros propios de esta hoja: Cliente, Abogado de Apoyo y Mes -->
@@ -903,19 +909,53 @@
       </div>
     </div>
 
-    <div class="total-count">Visitas (reuniones + comités) visibles: <b id="visitasTotalCount">0</b></div>
-
-    <!-- Cuadros de totales por tipo de visita: también son filtros -->
-    <div class="cards-ger-extra" style="margin-bottom:20px;">
-      <div class="card-ger" id="visBoxReunion" title="Clic para filtrar por Reunión (Reunión + Capacitación)">
-        <div class="num" id="visReunionTotal">0</div>
-        <div class="lbl">Reunión (Reunión + Capacitación)</div>
+    <!-- Total a la izquierda cubriendo toda la altura, y a la derecha el
+         desglose Reuniones (Reunión/Capacitación) y Comités (Laboral/
+         Convivencia). Cada cuadro es también un filtro: al hacer clic,
+         se filtran las gráficas de abajo. -->
+    <div class="ger-summary-layout">
+      <div class="ger-total-side" id="visBoxTotalGeneral" title="Clic para quitar cualquier filtro de categoría">
+        <div class="gts-lbl">Total</div>
+        <div class="gts-num" id="visitasTotalCount">0</div>
       </div>
-      <div class="card-ger" id="visBoxComite" title="Clic para filtrar por Comité">
-        <div class="num" id="visComiteTotal">0</div>
-        <div class="lbl">Comité (Laboral + Labora + Convivencia)</div>
+      <div class="ger-summary-right">
+        <div class="cards-ger-extra" style="margin-bottom:0;">
+          <div>
+            <div class="card-ger" id="visBoxReunion" title="Clic para filtrar por Reunión (Reunión + Capacitación)">
+              <div class="num" id="visReunionTotal">0</div>
+              <div class="lbl">Total reuniones: Reunión + Capacitación</div>
+            </div>
+            <div class="cards-ger-sub">
+              <div class="card-ger-sub" id="visBoxSubReunion" title="Clic para filtrar por tipo Reunión">
+                <div class="num-sm" id="visSubReunion">0</div>
+                <div class="lbl-sm">Reunión</div>
+              </div>
+              <div class="card-ger-sub" id="visBoxSubCapacitacion" title="Clic para filtrar por tipo Capacitación">
+                <div class="num-sm" id="visSubCapacitacion">0</div>
+                <div class="lbl-sm">Capacitación</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card-ger" id="visBoxComite" title="Clic para filtrar por Comité">
+              <div class="num" id="visComiteTotal">0</div>
+              <div class="lbl">Total comités: Comité Laboral + Comité de Convivencia</div>
+            </div>
+            <div class="cards-ger-sub">
+              <div class="card-ger-sub" id="visBoxSubComiteLaboral" title="Clic para filtrar por Comité Laboral / Comité Labora">
+                <div class="num-sm" id="visSubComiteLaboral">0</div>
+                <div class="lbl-sm">Comités laborales</div>
+              </div>
+              <div class="card-ger-sub" id="visBoxSubConvivencia" title="Clic para filtrar por Comité de Convivencia">
+                <div class="num-sm" id="visSubConvivencia">0</div>
+                <div class="lbl-sm">Comités convivencia</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+
 
     <!-- Gráfica combinada por abogado de apoyo -->
     <div class="panel" style="margin-bottom:20px;">
@@ -1079,6 +1119,14 @@ const VISITA_REUNION_TIPOS = new Set(['REUNIÓN','REUNION','CAPACITACIÓN','CAPA
 const VISITA_COMITE_TIPOS = new Set(['COMITÉ LABORAL','COMITE LABORAL','COMITÉ LABORA','COMITE LABORA','COMITÉ DE CONVIVENCIA','COMITE DE CONVIVENCIA']);
 function esVisitaReunion(r){ return VISITA_REUNION_TIPOS.has((r.t||'').toUpperCase()); }
 function esVisitaComite(r){ return VISITA_COMITE_TIPOS.has((r.t||'').toUpperCase()); }
+/* Desglose fino dentro de cada categoría, para los 4 cuadros pequeños
+   de Visitas a Clientes (Reunión/Capacitación y Comités laborales/de
+   convivencia). "Comités laborales" agrupa Comité Laboral Y Comité
+   Labora, tal como se pidió. */
+function esTipoReunionLiteral(r){ const t=(r.t||'').toUpperCase(); return t==='REUNIÓN' || t==='REUNION'; }
+function esTipoCapacitacionLiteral(r){ const t=(r.t||'').toUpperCase(); return t==='CAPACITACIÓN' || t==='CAPACITACION'; }
+function esComiteLaboralTipo(r){ const t=(r.t||'').toUpperCase(); return t==='COMITÉ LABORAL' || t==='COMITE LABORAL' || t==='COMITÉ LABORA' || t==='COMITE LABORA'; }
+function esComiteConvivenciaTipo(r){ const t=(r.t||'').toUpperCase(); return t==='COMITÉ DE CONVIVENCIA' || t==='COMITE DE CONVIVENCIA'; }
 
 const MESES_ES_FULL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function mesInfo(year, monthIdx){ // monthIdx 0-based
@@ -1098,6 +1146,7 @@ function getVentanaMeses(){
 let visitasFilters = { cliente: new Set(), apoyo: new Set(), mes: new Set() };
 let visitasMesInicializado = false;
 let visitasCategoriaFilter = null; // null | 'REUNION' | 'COMITE' — cuadros de arriba, funcionan como filtro
+let visitasSubFilter = null; // null | 'REUNION' | 'CAPACITACION' | 'COMITE_LABORAL' | 'CONVIVENCIA'
 
 /* Universo base: solo tipos de visita, sin CANCELADA, con fecha de
    compromiso interno dentro de la ventana de los 2 meses vigentes. */
@@ -1113,18 +1162,28 @@ function getVisitasBasePool(){
 }
 /* Aplica, de forma combinable, los filtros propios de esta hoja:
    Cliente, Abogado de Apoyo, Mes (siempre) y Categoría (Reunión/Comité,
-   activada al hacer clic en los cuadros de arriba). Los parámetros
-   usarCliente/usarApoyo permiten omitir esa dimensión concreta al
-   construir CADA gráfica, para que siga mostrando todas sus barras
-   (y así poder cambiar de selección con un clic), mientras el resto
-   de la hoja sí queda filtrado por la selección vigente. */
+   activada al hacer clic en los cuadros de arriba, con su propio
+   desglose fino). Los parámetros usarCliente/usarApoyo permiten omitir
+   esa dimensión concreta al construir CADA gráfica, para que siga
+   mostrando todas sus barras (y así poder cambiar de selección con un
+   clic), mientras el resto de la hoja sí queda filtrado por la
+   selección vigente. */
 function aplicarFiltrosVisitas(rows, {usarCliente=true, usarApoyo=true, usarMes=true, usarCategoria=true} = {}){
   return rows.filter(r=>{
     if(usarCliente && visitasFilters.cliente.size && !visitasFilters.cliente.has(norm(r.c).toLowerCase())) return false;
     if(usarApoyo && visitasFilters.apoyo.size && !visitasFilters.apoyo.has(norm(r.aa).toLowerCase())) return false;
     if(usarMes && visitasFilters.mes.size && !visitasFilters.mes.has(r.fc.slice(0,7))) return false;
-    if(usarCategoria && visitasCategoriaFilter === 'REUNION' && !esVisitaReunion(r)) return false;
-    if(usarCategoria && visitasCategoriaFilter === 'COMITE' && !esVisitaComite(r)) return false;
+    if(usarCategoria){
+      if(visitasCategoriaFilter === 'REUNION'){
+        if(!esVisitaReunion(r)) return false;
+        if(visitasSubFilter === 'REUNION' && !esTipoReunionLiteral(r)) return false;
+        if(visitasSubFilter === 'CAPACITACION' && !esTipoCapacitacionLiteral(r)) return false;
+      } else if(visitasCategoriaFilter === 'COMITE'){
+        if(!esVisitaComite(r)) return false;
+        if(visitasSubFilter === 'COMITE_LABORAL' && !esComiteLaboralTipo(r)) return false;
+        if(visitasSubFilter === 'CONVIVENCIA' && !esComiteConvivenciaTipo(r)) return false;
+      }
+    }
     return true;
   });
 }
@@ -1136,8 +1195,15 @@ function getVisitasOptionsFor(key){
   if(key !== 'cliente' && visitasFilters.cliente.size) base = base.filter(r=> visitasFilters.cliente.has(norm(r.c).toLowerCase()));
   if(key !== 'apoyo' && visitasFilters.apoyo.size) base = base.filter(r=> visitasFilters.apoyo.has(norm(r.aa).toLowerCase()));
   if(visitasFilters.mes.size) base = base.filter(r=> visitasFilters.mes.has(r.fc.slice(0,7)));
-  if(visitasCategoriaFilter === 'REUNION') base = base.filter(esVisitaReunion);
-  if(visitasCategoriaFilter === 'COMITE') base = base.filter(esVisitaComite);
+  if(visitasCategoriaFilter === 'REUNION'){
+    base = base.filter(esVisitaReunion);
+    if(visitasSubFilter === 'REUNION') base = base.filter(esTipoReunionLiteral);
+    if(visitasSubFilter === 'CAPACITACION') base = base.filter(esTipoCapacitacionLiteral);
+  } else if(visitasCategoriaFilter === 'COMITE'){
+    base = base.filter(esVisitaComite);
+    if(visitasSubFilter === 'COMITE_LABORAL') base = base.filter(esComiteLaboralTipo);
+    if(visitasSubFilter === 'CONVIVENCIA') base = base.filter(esComiteConvivenciaTipo);
+  }
   const field = key === 'cliente' ? 'c' : 'aa';
   return uniqueSorted(base.map(r=>r[field]));
 }
@@ -1157,12 +1223,39 @@ function toggleVisitaCliente(nombre){
 }
 function toggleVisitaCategoria(valor){
   visitasCategoriaFilter = (visitasCategoriaFilter === valor) ? null : valor;
+  visitasSubFilter = null; // cambiar de categoría principal limpia el desglose fino
   onVisitasFiltersChanged();
 }
+/* Los 4 cuadros pequeños (Reunión/Capacitación/Comités laborales/
+   Comités convivencia): seleccionan la categoría padre y además el
+   subtipo específico. */
+function toggleVisitaSubFiltro(categoria, valor){
+  if(visitasCategoriaFilter === categoria && visitasSubFilter === valor){
+    visitasSubFilter = null; // clic de nuevo sobre el mismo = lo quita
+  } else {
+    visitasCategoriaFilter = categoria;
+    visitasSubFilter = valor;
+  }
+  onVisitasFiltersChanged();
+}
+const _visBoxTotalGeneral = document.getElementById('visBoxTotalGeneral');
+if(_visBoxTotalGeneral) _visBoxTotalGeneral.addEventListener('click', ()=>{
+  visitasCategoriaFilter = null;
+  visitasSubFilter = null;
+  onVisitasFiltersChanged();
+});
 const _visBoxReunion = document.getElementById('visBoxReunion');
 if(_visBoxReunion) _visBoxReunion.addEventListener('click', ()=> toggleVisitaCategoria('REUNION'));
 const _visBoxComite = document.getElementById('visBoxComite');
 if(_visBoxComite) _visBoxComite.addEventListener('click', ()=> toggleVisitaCategoria('COMITE'));
+const _visBoxSubReunion = document.getElementById('visBoxSubReunion');
+if(_visBoxSubReunion) _visBoxSubReunion.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVisitaSubFiltro('REUNION','REUNION'); });
+const _visBoxSubCapacitacion = document.getElementById('visBoxSubCapacitacion');
+if(_visBoxSubCapacitacion) _visBoxSubCapacitacion.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVisitaSubFiltro('REUNION','CAPACITACION'); });
+const _visBoxSubComiteLaboral = document.getElementById('visBoxSubComiteLaboral');
+if(_visBoxSubComiteLaboral) _visBoxSubComiteLaboral.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVisitaSubFiltro('COMITE','COMITE_LABORAL'); });
+const _visBoxSubConvivencia = document.getElementById('visBoxSubConvivencia');
+if(_visBoxSubConvivencia) _visBoxSubConvivencia.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVisitaSubFiltro('COMITE','CONVIVENCIA'); });
 
 function renderVisitasMultiSelectOptions(key){
   const capKey = key === 'cliente' ? 'VCliente' : 'VApoyo';
@@ -1241,6 +1334,7 @@ if(_btnResetVisitas) _btnResetVisitas.addEventListener('click', ()=>{
   visitasFilters.cliente.clear();
   visitasFilters.apoyo.clear();
   visitasCategoriaFilter = null;
+  visitasSubFilter = null;
   ciMatrixFilters = { comite: { anterior:null, actual:null }, reunion: { anterior:null, actual:null } };
   const [mesAnterior, mesActual] = getVentanaMeses();
   visitasFilters.mes = new Set([mesAnterior.key, mesActual.key]);
@@ -1327,16 +1421,40 @@ function renderVisitas(){
   totalEl.textContent = filtered.length;
 
   let totReunion = 0, totComite = 0;
+  let subReunion = 0, subCapacitacion = 0, subComiteLaboral = 0, subConvivencia = 0;
   filtered.forEach(r=>{
-    if(esVisitaReunion(r)) totReunion++;
-    else if(esVisitaComite(r)) totComite++;
+    if(esVisitaReunion(r)){
+      totReunion++;
+      if(esTipoReunionLiteral(r)) subReunion++;
+      else if(esTipoCapacitacionLiteral(r)) subCapacitacion++;
+    } else if(esVisitaComite(r)){
+      totComite++;
+      if(esComiteLaboralTipo(r)) subComiteLaboral++;
+      else if(esComiteConvivenciaTipo(r)) subConvivencia++;
+    }
   });
   const elReunionTotal = document.getElementById('visReunionTotal');
   const elComiteTotal = document.getElementById('visComiteTotal');
   if(elReunionTotal) elReunionTotal.textContent = totReunion;
   if(elComiteTotal) elComiteTotal.textContent = totComite;
-  if(_visBoxReunion) _visBoxReunion.classList.toggle('active', visitasCategoriaFilter === 'REUNION');
-  if(_visBoxComite) _visBoxComite.classList.toggle('active', visitasCategoriaFilter === 'COMITE');
+  const elSubReunion = document.getElementById('visSubReunion');
+  const elSubCapacitacion = document.getElementById('visSubCapacitacion');
+  const elSubComiteLaboral = document.getElementById('visSubComiteLaboral');
+  const elSubConvivencia = document.getElementById('visSubConvivencia');
+  if(elSubReunion) elSubReunion.textContent = subReunion;
+  if(elSubCapacitacion) elSubCapacitacion.textContent = subCapacitacion;
+  if(elSubComiteLaboral) elSubComiteLaboral.textContent = subComiteLaboral;
+  if(elSubConvivencia) elSubConvivencia.textContent = subConvivencia;
+
+  if(_visBoxTotalGeneral) _visBoxTotalGeneral.classList.toggle('active', !visitasCategoriaFilter);
+  if(_visBoxReunion) _visBoxReunion.classList.toggle('active', visitasCategoriaFilter === 'REUNION' && !visitasSubFilter);
+  if(_visBoxComite) _visBoxComite.classList.toggle('active', visitasCategoriaFilter === 'COMITE' && !visitasSubFilter);
+  const reunionActiva = visitasCategoriaFilter === 'REUNION';
+  const comiteActiva = visitasCategoriaFilter === 'COMITE';
+  if(_visBoxSubReunion) _visBoxSubReunion.classList.toggle('active', reunionActiva && visitasSubFilter === 'REUNION');
+  if(_visBoxSubCapacitacion) _visBoxSubCapacitacion.classList.toggle('active', reunionActiva && visitasSubFilter === 'CAPACITACION');
+  if(_visBoxSubComiteLaboral) _visBoxSubComiteLaboral.classList.toggle('active', comiteActiva && visitasSubFilter === 'COMITE_LABORAL');
+  if(_visBoxSubConvivencia) _visBoxSubConvivencia.classList.toggle('active', comiteActiva && visitasSubFilter === 'CONVIVENCIA');
 
   // La gráfica por abogado omite SU PROPIA dimensión al filtrar, para
   // seguir mostrando todas sus barras (y poder cambiar de selección con
@@ -2562,6 +2680,7 @@ function procesarArrayBuffer(arrayBuffer){
     visitasFilters.cliente.clear();
     visitasFilters.apoyo.clear();
     visitasCategoriaFilter = null;
+    visitasSubFilter = null;
     ciMatrixFilters = { comite: { anterior:null, actual:null }, reunion: { anterior:null, actual:null } };
     visitasMesInicializado = false; // recalcula el mes en curso/anterior con la fecha de hoy
     renderVisitas();
