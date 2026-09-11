@@ -247,6 +247,36 @@
   }
   .month-chip:hover{border-color:var(--oliva);}
   .month-chip.active{background:var(--oliva); border-color:var(--oliva); color:#fff;}
+
+  /* ---- Comité Clientes / Reuniones Clientes (matriz Mes-1 / Mes actual) ---- */
+  .sw-ci-realizado{background:var(--verde);}
+  .sw-ci-programado{background:var(--amarillo);}
+  .sw-ci-no{background:#e3e3e5;}
+  .ci-matrix-scroll{overflow-x:auto; max-height:420px; overflow-y:auto;}
+  .ci-matrix{width:100%; border-collapse:collapse; font-size:.85rem;}
+  .ci-matrix thead th{
+    background:var(--gris); color:#fff; text-align:center; padding:8px 10px;
+    font-size:.72rem; text-transform:uppercase; letter-spacing:.4px;
+    position:sticky; top:0; z-index:1;
+  }
+  .ci-matrix thead th.ci-th-cliente{text-align:left;}
+  .ci-matrix tbody td{padding:6px 10px; border-top:1px solid var(--borde); text-align:center;}
+  .ci-matrix tbody td.ci-td-cliente{
+    text-align:left; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .ci-matrix tbody tr:nth-child(even){background:#fbfbfb;}
+  .ci-matrix tbody tr.clickable{cursor:pointer;}
+  .ci-matrix tbody tr.clickable:hover{background:#f4f6e6;}
+  .ci-matrix tbody tr.active{background:#eef3cf; box-shadow:inset 0 0 0 1px var(--oliva);}
+  .ci-matrix tbody tr.active .ci-td-cliente{font-weight:700; color:#4a5210;}
+  .ci-badge{
+    display:inline-block; min-width:44px; padding:4px 8px; border-radius:999px;
+    font-size:.72rem; font-weight:700; color:#fff;
+  }
+  .ci-badge.ci-realizado{background:var(--verde);}
+  .ci-badge.ci-programado{background:var(--amarillo); color:#4a3b00;}
+  .ci-badge.ci-no{background:#e3e3e5; color:var(--gris);}
+
   /* Etiqueta de valor: ya no queda fija/consolidada al final de la fila;
      se posiciona justo donde termina cada barra (left = % de la barra). */
   .bar-row .bval{
@@ -877,15 +907,29 @@
       <div class="scroll-panel" id="visitasPorApoyo"></div>
     </div>
 
-    <!-- Gráfica combinada por cliente -->
-    <div class="panel">
-      <h2>Visitas por cliente</h2>
-      <div class="panel-sub">Misma información, agrupada por cliente · clic sobre un cliente para filtrar el resto de la hoja por él.</div>
+    <!-- Comité Clientes: por cada cliente, si tuvo/tiene Comité (Laboral,
+         Labora o Convivencia) en el mes anterior y en el mes actual. -->
+    <div class="panel" style="margin-bottom:20px;">
+      <h2>Comité Clientes</h2>
+      <div class="panel-sub">¿El cliente tiene tarea tipo Comité (Laboral / Labora / Convivencia) en cada mes? · clic sobre un cliente para filtrar el resto de la hoja por él.</div>
       <div class="panel-legend">
-        <span><span class="sw sw-vis-reunion"></span>Reunión (Reunión + Capacitación)</span>
-        <span><span class="sw sw-vis-comite"></span>Comité (Comité Laboral + Comité Labora + Comité de Convivencia)</span>
+        <span><span class="sw sw-ci-realizado"></span>Sí, realizado</span>
+        <span><span class="sw sw-ci-programado"></span>Sí, programado</span>
+        <span><span class="sw sw-ci-no"></span>No</span>
       </div>
-      <div class="scroll-panel" id="visitasPorCliente"></div>
+      <div class="ci-matrix-scroll" id="comiteClientesMatrix"></div>
+    </div>
+
+    <!-- Reuniones Clientes: mismo estilo, para Reunión + Capacitación. -->
+    <div class="panel">
+      <h2>Reuniones Clientes</h2>
+      <div class="panel-sub">¿El cliente tiene tarea tipo Reunión o Capacitación en cada mes? · clic sobre un cliente para filtrar el resto de la hoja por él.</div>
+      <div class="panel-legend">
+        <span><span class="sw sw-ci-realizado"></span>Sí, realizado</span>
+        <span><span class="sw sw-ci-programado"></span>Sí, programado</span>
+        <span><span class="sw sw-ci-no"></span>No</span>
+      </div>
+      <div class="ci-matrix-scroll" id="reunionClientesMatrix"></div>
     </div>
 
   </div><!-- /viewVisitas -->
@@ -1049,13 +1093,13 @@ function getVisitasBasePool(){
    construir CADA gráfica, para que siga mostrando todas sus barras
    (y así poder cambiar de selección con un clic), mientras el resto
    de la hoja sí queda filtrado por la selección vigente. */
-function aplicarFiltrosVisitas(rows, {usarCliente=true, usarApoyo=true} = {}){
+function aplicarFiltrosVisitas(rows, {usarCliente=true, usarApoyo=true, usarMes=true, usarCategoria=true} = {}){
   return rows.filter(r=>{
     if(usarCliente && visitasFilters.cliente.size && !visitasFilters.cliente.has(norm(r.c).toLowerCase())) return false;
     if(usarApoyo && visitasFilters.apoyo.size && !visitasFilters.apoyo.has(norm(r.aa).toLowerCase())) return false;
-    if(visitasFilters.mes.size && !visitasFilters.mes.has(r.fc.slice(0,7))) return false;
-    if(visitasCategoriaFilter === 'REUNION' && !esVisitaReunion(r)) return false;
-    if(visitasCategoriaFilter === 'COMITE' && !esVisitaComite(r)) return false;
+    if(usarMes && visitasFilters.mes.size && !visitasFilters.mes.has(r.fc.slice(0,7))) return false;
+    if(usarCategoria && visitasCategoriaFilter === 'REUNION' && !esVisitaReunion(r)) return false;
+    if(usarCategoria && visitasCategoriaFilter === 'COMITE' && !esVisitaComite(r)) return false;
     return true;
   });
 }
@@ -1268,14 +1312,98 @@ function renderVisitas(){
   if(_visBoxReunion) _visBoxReunion.classList.toggle('active', visitasCategoriaFilter === 'REUNION');
   if(_visBoxComite) _visBoxComite.classList.toggle('active', visitasCategoriaFilter === 'COMITE');
 
-  // Cada gráfica omite SU PROPIA dimensión al filtrar, para seguir
-  // mostrando todas sus barras (y poder cambiar de selección con un
-  // clic), mientras respeta el resto de filtros vigentes (incluida la
-  // categoría Reunión/Comité de los cuadros de arriba).
+  // La gráfica por abogado omite SU PROPIA dimensión al filtrar, para
+  // seguir mostrando todas sus barras (y poder cambiar de selección con
+  // un clic), mientras respeta el resto de filtros vigentes (incluida
+  // la categoría Reunión/Comité de los cuadros de arriba).
   const paraApoyo = aplicarFiltrosVisitas(pool, {usarApoyo:false});
-  const paraCliente = aplicarFiltrosVisitas(pool, {usarCliente:false});
   renderVisitasGrupo(paraApoyo, 'aa', 'visitasPorApoyo', 'apoyo');
-  renderVisitasGrupo(paraCliente, 'c', 'visitasPorCliente', 'cliente');
+
+  // Comité Clientes / Reuniones Clientes: matriz Mes-1 / Mes actual.
+  // Ignoran el filtro de "mes" (chips) porque necesitan comparar SIEMPRE
+  // los dos meses lado a lado, e ignoran la categoría Reunión/Comité de
+  // los cuadros de arriba porque cada matriz ya tiene su categoría fija.
+  // Si respetan Cliente y Abogado de Apoyo.
+  const paraMatriz = aplicarFiltrosVisitas(pool, {usarMes:false, usarCategoria:false});
+  renderMatrizClientes(paraMatriz.filter(esVisitaComite), 'comiteClientesMatrix');
+  renderMatrizClientes(paraMatriz.filter(esVisitaReunion), 'reunionClientesMatrix');
+}
+
+/* Matriz "Cliente x Mes" (Mes -1 / Mes actual): para cada cliente que
+   aparece en 'rows' (ya filtradas a un único tipo de visita: Comité o
+   Reunión+Capacitación), marca si tiene una tarea de ese tipo en cada
+   mes, y si esa tarea ya se gestionó (Realizado) o sigue pendiente
+   (Programado). Clic en una fila = filtro por ese cliente (igual que
+   las demás gráficas de esta hoja). */
+function renderMatrizClientes(rows, contenedorId){
+  const cont = document.getElementById(contenedorId);
+  if(!cont) return;
+  const [mesAnterior, mesActual] = getVentanaMeses();
+
+  // Universo de clientes: todos los que tienen alguna tarea de visita
+  // (Reunión/Capacitación/Comité) dentro de la ventana de 2 meses,
+  // respetando los filtros de Cliente/Abogado de Apoyo vigentes — así
+  // también se ven en "NO/NO" los clientes que no tuvieron este tipo
+  // concreto de visita.
+  const roster = uniqueSorted(getVisitasBasePool()
+    .filter(r=>{
+      if(visitasFilters.cliente.size && !visitasFilters.cliente.has(norm(r.c).toLowerCase())) return false;
+      if(visitasFilters.apoyo.size && !visitasFilters.apoyo.has(norm(r.aa).toLowerCase())) return false;
+      return true;
+    })
+    .map(r=>r.c));
+
+  const estado = new Map(); // cliente -> {anterior:null|'realizado'|'programado', actual:...}
+  roster.forEach(c=> estado.set(c, {anterior:null, actual:null}));
+  rows.forEach(r=>{
+    const c = norm(r.c) || '(Sin cliente)';
+    if(!estado.has(c)) estado.set(c, {anterior:null, actual:null});
+    const mesKey = r.fc.slice(0,7);
+    const col = mesKey === mesAnterior.key ? 'anterior' : (mesKey === mesActual.key ? 'actual' : null);
+    if(!col) return;
+    const actual = estado.get(c)[col];
+    if(actual === 'realizado') return; // ya está en el mejor estado posible
+    estado.get(c)[col] = (r.g === 'GESTIONADO') ? 'realizado' : 'programado';
+  });
+
+  const clientes = Array.from(estado.keys()).sort((a,b)=> a.localeCompare(b,'es'));
+  cont.innerHTML = '';
+  if(clientes.length === 0){
+    cont.innerHTML = '<div class="empty-msg">Sin clientes para los filtros seleccionados.</div>';
+    return;
+  }
+  const badge = (valor)=>{
+    if(valor === 'realizado') return '<span class="ci-badge ci-realizado">SÍ</span>';
+    if(valor === 'programado') return '<span class="ci-badge ci-programado">SÍ</span>';
+    return '<span class="ci-badge ci-no">NO</span>';
+  };
+  const table = document.createElement('table');
+  table.className = 'ci-matrix';
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th class="ci-th-cliente">Cliente</th>
+        <th>${escapeHtml(mesAnterior.label)}</th>
+        <th>${escapeHtml(mesActual.label)}</th>
+      </tr>
+    </thead>
+    <tbody></tbody>`;
+  const tbody = table.querySelector('tbody');
+  clientes.forEach(nombreCliente=>{
+    const st = estado.get(nombreCliente);
+    const lower = nombreCliente.toLowerCase();
+    const isActive = visitasFilters.cliente.size === 1 && visitasFilters.cliente.has(lower);
+    const tr = document.createElement('tr');
+    tr.className = 'clickable' + (isActive ? ' active' : '');
+    tr.title = `Clic para filtrar por: ${nombreCliente}`;
+    tr.innerHTML = `
+      <td class="ci-td-cliente" title="${escapeHtml(nombreCliente)}">${escapeHtml(nombreCliente)}</td>
+      <td>${badge(st.anterior)}</td>
+      <td>${badge(st.actual)}</td>`;
+    tr.addEventListener('click', ()=> toggleVisitaCliente(nombreCliente));
+    tbody.appendChild(tr);
+  });
+  cont.appendChild(table);
 }
 
 function rowClass(r){
