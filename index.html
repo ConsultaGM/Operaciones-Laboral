@@ -269,7 +269,7 @@
   }
   .ci-th-simple:hover{opacity:.85;}
   .ci-th-simple .ci-sort-btn{font-size:.75rem;}
-  .ci-matrix thead th.ci-th-cliente.ci-th-simple{justify-content:flex-start;}
+  .ci-matrix thead th.ci-th-cliente .ci-th-simple{justify-content:flex-start;}
   .ci-matrix tbody td{padding:6px 8px; border-top:1px solid var(--borde); text-align:center;}
   .ci-matrix tbody td.ci-td-cliente{
     text-align:left; font-size:.92rem; white-space:nowrap;
@@ -2526,7 +2526,7 @@ function renderTablaIngresosSalidas(contenedorId, tablaKey, periodos, data, prim
     const f = filas[idx];
     let ingresoTotal = 0;
     CANAL_GRUPOS.forEach(g=> ingresoTotal += f.canales[g.key]);
-    return { label:p.label, canales:f.canales, salidas:f.salidas, diff: ingresoTotal - f.salidas };
+    return { label:p.label, canales:f.canales, ingresoTotal, salidas:f.salidas, diff: ingresoTotal - f.salidas };
   });
 
   const sortState = ioSortState[tablaKey];
@@ -2536,6 +2536,7 @@ function renderTablaIngresosSalidas(contenedorId, tablaKey, periodos, data, prim
       const fa = filasCalc[ia], fb = filasCalc[ib];
       let va, vb;
       if(sortState.col === 'periodo'){ va = fa.label; vb = fb.label; }
+      else if(sortState.col === 'ingresoTotal'){ va = fa.ingresoTotal; vb = fb.ingresoTotal; }
       else if(sortState.col === 'salidas'){ va = fa.salidas; vb = fb.salidas; }
       else if(sortState.col === 'total'){ va = fa.diff; vb = fb.diff; }
       else { va = fa.canales[sortState.col] || 0; vb = fb.canales[sortState.col] || 0; }
@@ -2558,6 +2559,7 @@ function renderTablaIngresosSalidas(contenedorId, tablaKey, periodos, data, prim
     <thead><tr>
       ${thOrdenable('periodo', primeraColLabel)}
       ${headCanales}
+      ${thOrdenable('ingresoTotal','Ingresos Total')}
       ${thOrdenable('salidas','Salidas')}
       ${thOrdenable('total','Total (Ingresos − Salidas)', 'ci-th-total')}
     </tr></thead>
@@ -2569,7 +2571,7 @@ function renderTablaIngresosSalidas(contenedorId, tablaKey, periodos, data, prim
 
   const tbody = table.querySelector('tbody');
   const totalesCanal = {}; gruposVisibles.forEach(g=> totalesCanal[g.key] = 0);
-  let totalSalidas = 0, totalGeneral = 0;
+  let totalIngresos = 0, totalSalidas = 0, totalGeneral = 0;
   ordenIdx.forEach(i=>{
     const f = filasCalc[i];
     const celdasCanal = gruposVisibles.map(g=>{
@@ -2577,15 +2579,16 @@ function renderTablaIngresosSalidas(contenedorId, tablaKey, periodos, data, prim
       totalesCanal[g.key] += v;
       return `<td>${v}</td>`;
     }).join('');
+    totalIngresos += f.ingresoTotal;
     totalSalidas += f.salidas;
     totalGeneral += f.diff;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="ci-td-cliente">${escapeHtml(f.label)}</td>${celdasCanal}<td>${f.salidas}</td><td class="ci-td-total">${f.diff}</td>`;
+    tr.innerHTML = `<td class="ci-td-cliente">${escapeHtml(f.label)}</td>${celdasCanal}<td>${f.ingresoTotal}</td><td>${f.salidas}</td><td class="ci-td-total">${f.diff}</td>`;
     tbody.appendChild(tr);
   });
   const tfoot = table.querySelector('tfoot');
   const celdasTotalCanal = gruposVisibles.map(g=> `<td>${totalesCanal[g.key]}</td>`).join('');
-  tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotalCanal}<td>${totalSalidas}</td><td>${totalGeneral}</td></tr>`;
+  tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotalCanal}<td>${totalIngresos}</td><td>${totalSalidas}</td><td>${totalGeneral}</td></tr>`;
   cont.appendChild(table);
 }
 /* Días del mes correspondiente a una llave "AAAA-MM". */
@@ -2702,11 +2705,11 @@ function renderProductividad(){
   const table = document.createElement('table');
   table.className = 'ci-matrix';
   const filaMeses = `<tr>
-      <th class="ci-th-cliente ci-th-simple" rowspan="2" data-col="nombre"><span>Abogado</span>${sortArrow('nombre')}</th>
+      <th class="ci-th-cliente" rowspan="2"><div class="ci-th-simple" data-col="nombre"><span>Abogado</span>${sortArrow('nombre')}</div></th>
       ${meses.map(m=> `<th colspan="2">${escapeHtml(m.label)}</th>`).join('')}
-      <th class="ci-th-total ci-th-simple" rowspan="2" data-col="TOTAL"><span>Total</span>${sortArrow('TOTAL')}</th>
+      <th class="ci-th-total" rowspan="2"><div class="ci-th-simple" data-col="TOTAL"><span>Total</span>${sortArrow('TOTAL')}</div></th>
     </tr>
-    <tr>${meses.map((m,idx)=> `<th class="ci-th-simple" data-col="${idx}:gestiones"><span>Gestiones</span>${sortArrow(idx+':gestiones')}</th><th class="ci-th-simple" data-col="${idx}:revisiones"><span>Revisiones</span>${sortArrow(idx+':revisiones')}</th>`).join('')}</tr>`;
+    <tr>${meses.map((m,idx)=> `<th><div class="ci-th-simple" data-col="${idx}:gestiones"><span>Gestiones</span>${sortArrow(idx+':gestiones')}</div></th><th><div class="ci-th-simple" data-col="${idx}:revisiones"><span>Revisiones</span>${sortArrow(idx+':revisiones')}</div></th>`).join('')}</tr>`;
   table.innerHTML = `<thead>${filaMeses}</thead><tbody></tbody><tfoot></tfoot>`;
   table.querySelectorAll('thead .ci-th-simple').forEach(th=>{
     th.addEventListener('click', ()=> toggleProductividadSort(th.dataset.col));
