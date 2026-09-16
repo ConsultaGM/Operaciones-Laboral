@@ -248,18 +248,18 @@
   .month-chip:hover{border-color:var(--oliva);}
   .month-chip.active{background:var(--oliva); border-color:var(--oliva); color:#fff;}
 
-  /* ---- Comité Clientes / Reuniones Clientes (matriz Mes-1 / Mes actual) ---- */
+  /* ---- Comité Clientes / Reuniones Clientes (matriz de 6 meses: mes actual + 5 anteriores) ---- */
   .sw-ci-realizado{background:var(--verde);}
   .sw-ci-programado{background:var(--amarillo);}
   .sw-ci-no{background:#e3e3e5;}
   .ci-matrix-scroll{overflow-x:auto; max-height:420px; overflow-y:auto;}
-  .ci-matrix{width:100%; border-collapse:collapse; font-size:.85rem;}
+  .ci-matrix{width:100%; min-width:640px; border-collapse:collapse; font-size:.85rem;}
   .ci-matrix thead th{
     background:var(--gris); color:#fff; text-align:center; padding:8px 10px;
     font-size:.72rem; text-transform:uppercase; letter-spacing:.4px;
-    position:sticky; top:0; z-index:1;
+    position:sticky; top:0; z-index:1; min-width:78px;
   }
-  .ci-matrix thead th.ci-th-cliente{text-align:left;}
+  .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:150px;}
   .ci-matrix tbody td{padding:6px 10px; border-top:1px solid var(--borde); text-align:center;}
   .ci-matrix tbody td.ci-td-cliente{
     text-align:left; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -631,8 +631,6 @@
 
   <div id="viewDashboard">
 
-  <div class="total-count">Tareas activas visibles: <b id="totalCount">0</b></div>
-
   <!-- Indicadores -->
   <div class="cards-main">
     <div class="card card-total" id="cardBoxTotal" title="Clic para quitar filtros de estado">
@@ -969,15 +967,16 @@
     </div>
 
     <!-- Comité Clientes / Reuniones Clientes: comparten espacio en dos
-         columnas. Por cada cliente, si tuvo/tiene ese tipo de tarea en
-         el mes anterior y en el mes actual. Los encabezados SÍ/NO de
-         cada mes son también un filtro: al activarlos, la tabla se
-         reduce solo a los clientes que cumplen esa condición ese mes
-         (útil para detectar rápido a quién no se le ha hecho seguimiento). -->
+         columnas. Por cada cliente ACTIVO (según LISTAS!N:Q), si tuvo/
+         tiene ese tipo de tarea en cada uno de los últimos 6 meses (mes
+         actual + 5 anteriores). Los encabezados SÍ/NO de cada mes son
+         también un filtro: al activarlos, la tabla se reduce solo a
+         los clientes que cumplen esa condición ese mes (útil para
+         detectar rápido a quién no se le ha hecho seguimiento). -->
     <div class="grid-2-cols">
       <div class="panel">
         <h2>Comité Clientes</h2>
-        <div class="panel-sub">¿El cliente tiene tarea tipo Comité (Laboral / Labora / Convivencia) en cada mes? · clic en SÍ/NO del encabezado para filtrar por ese mes · clic en un cliente para filtrar el resto de la hoja por él.</div>
+        <div class="panel-sub">¿El cliente activo tiene tarea tipo Comité (Laboral / Labora / Convivencia) en cada uno de los últimos 6 meses (mes actual + 5 anteriores)? · clic en SÍ/NO del encabezado para filtrar por ese mes · clic en un cliente para filtrar el resto de la hoja por él.</div>
         <div class="panel-legend">
           <span><span class="sw sw-ci-realizado"></span>Sí, realizado</span>
           <span><span class="sw sw-ci-programado"></span>Sí, programado</span>
@@ -987,7 +986,7 @@
       </div>
       <div class="panel">
         <h2>Reuniones Clientes</h2>
-        <div class="panel-sub">¿El cliente tiene tarea tipo Reunión o Capacitación en cada mes? · clic en SÍ/NO del encabezado para filtrar por ese mes · clic en un cliente para filtrar el resto de la hoja por él.</div>
+        <div class="panel-sub">¿El cliente activo tiene tarea tipo Reunión o Capacitación en cada uno de los últimos 6 meses (mes actual + 5 anteriores)? · clic en SÍ/NO del encabezado para filtrar por ese mes · clic en un cliente para filtrar el resto de la hoja por él.</div>
         <div class="panel-legend">
           <span><span class="sw sw-ci-realizado"></span>Realizadas</span>
           <span><span class="sw sw-ci-programado"></span>Programadas</span>
@@ -1022,6 +1021,7 @@ let activeData = [];    // solo tareas activas (GESTIÓN != GESTIONADO), la usan
 /* ---------- estado de la Agenda ---------- */
 let reviewerMap = {};         // { "nombre abogado" en minúsculas -> "R - Tag" } construido desde LISTAS!R:T
 let reviewerNameByTag = {};   // { "r - tag" en minúsculas -> "Nombre Completo" } (mapa inverso, para mostrar nombres)
+let clientesActivos = new Map(); // "nombre en minúsculas" -> "nombre original", con ESTADO = "ACTIVO" en LISTAS!N:Q
 let agendaApoyo = '';      // abogado de apoyo seleccionado en la Agenda (mismo valor que columna M)
 let agendaIndex = null;    // índices precomputados para evitar recorrer todo el dataset en cada render
 
@@ -1142,6 +1142,20 @@ function getVentanaMeses(){
   const anterior = mesInfo(py, pm);
   return [anterior, actual];
 }
+/* Ventana de 6 meses (mes actual + los 5 anteriores), en orden
+   ascendente, para las matrices "Comité Clientes" y "Reuniones
+   Clientes". */
+function getVentana6Meses(){
+  const hoy = new Date();
+  const y = hoy.getFullYear(), m = hoy.getMonth();
+  const meses = [];
+  for(let i = 5; i >= 0; i--){
+    let mm = m - i, yy = y;
+    while(mm < 0){ mm += 12; yy -= 1; }
+    meses.push(mesInfo(yy, mm));
+  }
+  return meses;
+}
 
 let visitasFilters = { cliente: new Set(), apoyo: new Set(), mes: new Set() };
 let visitasMesInicializado = false;
@@ -1153,6 +1167,18 @@ let visitasSubFilter = null; // null | 'REUNION' | 'CAPACITACION' | 'COMITE_LABO
 function getVisitasBasePool(){
   const [mesAnterior, mesActual] = getVentanaMeses();
   const keysVentana = new Set([mesAnterior.key, mesActual.key]);
+  return currentData.filter(r=>{
+    if((r.e||'').toUpperCase() === 'CANCELADA') return false;
+    if(!(esVisitaReunion(r) || esVisitaComite(r))) return false;
+    if(!r.fc) return false;
+    return keysVentana.has(r.fc.slice(0,7));
+  });
+}
+/* Igual que getVisitasBasePool(), pero con la ventana de 6 meses (mes
+   actual + 5 anteriores) que usan las matrices "Comité Clientes" y
+   "Reuniones Clientes". */
+function getVisitasBasePool6Meses(){
+  const keysVentana = new Set(getVentana6Meses().map(m=>m.key));
   return currentData.filter(r=>{
     if((r.e||'').toUpperCase() === 'CANCELADA') return false;
     if(!(esVisitaReunion(r) || esVisitaComite(r))) return false;
@@ -1335,7 +1361,7 @@ if(_btnResetVisitas) _btnResetVisitas.addEventListener('click', ()=>{
   visitasFilters.apoyo.clear();
   visitasCategoriaFilter = null;
   visitasSubFilter = null;
-  ciMatrixFilters = { comite: { anterior:null, actual:null }, reunion: { anterior:null, actual:null } };
+  ciMatrixFilters = { comite: [null,null,null,null,null,null], reunion: [null,null,null,null,null,null] };
   const [mesAnterior, mesActual] = getVentanaMeses();
   visitasFilters.mes = new Set([mesAnterior.key, mesActual.key]);
   onVisitasFiltersChanged();
@@ -1463,64 +1489,71 @@ function renderVisitas(){
   const paraApoyo = aplicarFiltrosVisitas(pool, {usarApoyo:false});
   renderVisitasGrupo(paraApoyo, 'aa', 'visitasPorApoyo', 'apoyo');
 
-  // Comité Clientes / Reuniones Clientes: matriz Mes-1 / Mes actual.
-  // Ignoran el filtro de "mes" (chips) porque necesitan comparar SIEMPRE
-  // los dos meses lado a lado, pero SÍ respetan Cliente, Abogado de
-  // Apoyo y la categoría/desglose fino de los cuadros de arriba (Total,
-  // Reunión/Capacitación, Comité Laboral/Convivencia) — igual que el
-  // resto de gráficas de esta hoja.
-  const paraMatriz = aplicarFiltrosVisitas(pool, {usarMes:false});
+  // Comité Clientes / Reuniones Clientes: matriz de 6 meses (mes actual
+  // + 5 anteriores). Usan su PROPIA ventana de 6 meses (no la de 2
+  // meses del resto de la hoja) y por eso parten de
+  // getVisitasBasePool6Meses() en vez de 'pool'. Ignoran el filtro de
+  // "mes" (chips, pensado para la ventana de 2 meses) porque necesitan
+  // comparar SIEMPRE los 6 meses lado a lado, pero SÍ respetan Cliente,
+  // Abogado de Apoyo y la categoría/desglose fino de los cuadros de
+  // arriba (Total, Reunión/Capacitación, Comité Laboral/Convivencia).
+  const pool6 = getVisitasBasePool6Meses();
+  const paraMatriz = aplicarFiltrosVisitas(pool6, {usarMes:false});
   renderMatrizClientes(paraMatriz.filter(esVisitaComite), 'comiteClientesMatrix', 'comite');
   renderMatrizClientes(paraMatriz.filter(esVisitaReunion), 'reunionClientesMatrix', 'reunion');
 }
 
 /* Filtro SÍ/NO propio de cada matriz, por columna de mes:
-   null (todos) | 'SI' | 'NO'. */
+   null (todos) | 'SI' | 'NO', un valor por cada uno de los 6 meses. */
 let ciMatrixFilters = {
-  comite: { anterior:null, actual:null },
-  reunion:{ anterior:null, actual:null }
+  comite: [null,null,null,null,null,null],
+  reunion:[null,null,null,null,null,null]
 };
-function toggleCiFiltro(tipo, col, valor){
+function toggleCiFiltro(tipo, idx, valor){
   const f = ciMatrixFilters[tipo];
-  f[col] = (f[col] === valor) ? null : valor;
+  f[idx] = (f[idx] === valor) ? null : valor;
   renderVisitas();
 }
 
-/* Matriz "Cliente x Mes" (Mes -1 / Mes actual): para cada cliente que
-   aparece en 'rows' (ya filtradas a un único tipo de visita: Comité o
-   Reunión+Capacitación), cuenta cuántas tareas de ese tipo tiene en
-   cada mes, separadas entre ya gestionadas (Realizado) y pendientes
-   (Programado). Clic en una fila = filtro por ese cliente; los
-   botones SÍ/NO del encabezado filtran la tabla por ese mes. */
+/* Matriz "Cliente x Mes" (mes actual + 5 anteriores): para cada cliente
+   ACTIVO (según LISTAS!N:Q) cuenta cuántas tareas de un único tipo de
+   visita (Comité o Reunión+Capacitación, ya viene filtrado en 'rows')
+   tiene en cada uno de los 6 meses, separadas entre ya gestionadas
+   (Realizado) y pendientes (Programado). Clic en una fila = filtro por
+   ese cliente; los botones SÍ/NO del encabezado filtran la tabla por
+   ese mes. */
 function renderMatrizClientes(rows, contenedorId, tipo){
   const cont = document.getElementById(contenedorId);
   if(!cont) return;
-  const [mesAnterior, mesActual] = getVentanaMeses();
+  const meses = getVentana6Meses(); // 6 meses, ascendente
 
-  // Universo de clientes: todos los que tienen alguna tarea de visita
-  // (Reunión/Capacitación/Comité) dentro de la ventana de 2 meses,
-  // respetando los filtros de Cliente/Abogado de Apoyo vigentes — así
-  // también se ven en "NO/NO" los clientes que no tuvieron este tipo
-  // concreto de visita.
-  const roster = uniqueSorted(getVisitasBasePool()
-    .filter(r=>{
-      if(visitasFilters.cliente.size && !visitasFilters.cliente.has(norm(r.c).toLowerCase())) return false;
-      if(visitasFilters.apoyo.size && !visitasFilters.apoyo.has(norm(r.aa).toLowerCase())) return false;
-      return true;
-    })
-    .map(r=>r.c));
+  // Universo de clientes: SOLO los que están en la hoja LISTAS (columna
+  // N) con ESTADO = "ACTIVO" (columna Q) — ya no todos los clientes que
+  // aparecen en las tareas. Se respetan Cliente y Abogado de Apoyo si
+  // están filtrados arriba.
+  let rosterNames = Array.from(clientesActivos.values());
+  if(visitasFilters.cliente.size) rosterNames = rosterNames.filter(n=> visitasFilters.cliente.has(n.toLowerCase()));
+  if(visitasFilters.apoyo.size){
+    const clientesDelAbogado = new Set(
+      getVisitasBasePool6Meses()
+        .filter(r=> visitasFilters.apoyo.has(norm(r.aa).toLowerCase()))
+        .map(r=> norm(r.c).toLowerCase())
+    );
+    rosterNames = rosterNames.filter(n=> clientesDelAbogado.has(n.toLowerCase()));
+  }
+  const rosterLower = new Map(rosterNames.map(n=>[n.toLowerCase(), n]));
 
-  // cliente -> {anterior:{realizado,programado}, actual:{realizado,programado}}
+  // cliente -> [{realizado,programado} x 6 meses]
   const conteo = new Map();
-  const nuevo = ()=>({anterior:{realizado:0,programado:0}, actual:{realizado:0,programado:0}});
-  roster.forEach(c=> conteo.set(c, nuevo()));
+  const nuevoBucket = ()=> meses.map(()=>({realizado:0, programado:0}));
+  rosterNames.forEach(n=> conteo.set(n, nuevoBucket()));
   rows.forEach(r=>{
-    const c = norm(r.c) || '(Sin cliente)';
-    if(!conteo.has(c)) conteo.set(c, nuevo());
-    const mesKey = r.fc.slice(0,7);
-    const col = mesKey === mesAnterior.key ? 'anterior' : (mesKey === mesActual.key ? 'actual' : null);
-    if(!col) return;
-    const bucket = conteo.get(c)[col];
+    const cLower = norm(r.c).toLowerCase();
+    if(!rosterLower.has(cLower)) return; // cliente no activo en LISTAS -> se ignora
+    const nombre = rosterLower.get(cLower);
+    const idx = meses.findIndex(m=> m.key === r.fc.slice(0,7));
+    if(idx === -1) return;
+    const bucket = conteo.get(nombre)[idx];
     if(r.g === 'GESTIONADO') bucket.realizado++; else bucket.programado++;
   });
 
@@ -1532,19 +1565,19 @@ function renderMatrizClientes(rows, contenedorId, tipo){
     return filtro === 'SI' ? tieneAlgo : !tieneAlgo;
   };
   const clientes = Array.from(conteo.keys())
-    .filter(c=> cumple(conteo.get(c).anterior, f.anterior) && cumple(conteo.get(c).actual, f.actual))
+    .filter(nombre=> conteo.get(nombre).every((bucket,idx)=> cumple(bucket, f[idx])))
     .sort((a,b)=> a.localeCompare(b,'es'));
 
   cont.innerHTML = '';
-  const thMes = (mesInfo, col)=>{
-    const activeSi = f[col] === 'SI', activeNo = f[col] === 'NO';
+  const thMes = (m, idx)=>{
+    const activeSi = f[idx] === 'SI', activeNo = f[idx] === 'NO';
     return `
       <th>
         <div class="ci-th-mes">
-          <span>${escapeHtml(mesInfo.label)}</span>
+          <span>${escapeHtml(m.label)}</span>
           <div class="ci-th-filter">
-            <button type="button" class="ci-th-btn${activeSi?' active-si':''}" data-tipo="${tipo}" data-col="${col}" data-val="SI">SÍ</button>
-            <button type="button" class="ci-th-btn${activeNo?' active-no':''}" data-tipo="${tipo}" data-col="${col}" data-val="NO">NO</button>
+            <button type="button" class="ci-th-btn${activeSi?' active-si':''}" data-tipo="${tipo}" data-idx="${idx}" data-val="SI">SÍ</button>
+            <button type="button" class="ci-th-btn${activeNo?' active-no':''}" data-tipo="${tipo}" data-idx="${idx}" data-val="NO">NO</button>
           </div>
         </div>
       </th>`;
@@ -1555,21 +1588,20 @@ function renderMatrizClientes(rows, contenedorId, tipo){
     <thead>
       <tr>
         <th class="ci-th-cliente">Cliente</th>
-        ${thMes(mesAnterior,'anterior')}
-        ${thMes(mesActual,'actual')}
+        ${meses.map((m,idx)=> thMes(m,idx)).join('')}
       </tr>
     </thead>
     <tbody></tbody>`;
   table.querySelectorAll('.ci-th-btn').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
-      toggleCiFiltro(btn.dataset.tipo, btn.dataset.col, btn.dataset.val);
+      toggleCiFiltro(btn.dataset.tipo, parseInt(btn.dataset.idx,10), btn.dataset.val);
     });
   });
 
   const tbody = table.querySelector('tbody');
   if(clientes.length === 0){
-    tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Sin clientes para los filtros seleccionados.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${meses.length+1}" class="empty-msg">Sin clientes para los filtros seleccionados.</td></tr>`;
     cont.appendChild(table);
     return;
   }
@@ -1593,7 +1625,7 @@ function renderMatrizClientes(rows, contenedorId, tipo){
   };
 
   clientes.forEach(nombreCliente=>{
-    const c = conteo.get(nombreCliente);
+    const buckets = conteo.get(nombreCliente);
     const lower = nombreCliente.toLowerCase();
     const isActive = visitasFilters.cliente.size === 1 && visitasFilters.cliente.has(lower);
     const tr = document.createElement('tr');
@@ -1601,8 +1633,7 @@ function renderMatrizClientes(rows, contenedorId, tipo){
     tr.title = `Clic para filtrar por: ${nombreCliente}`;
     tr.innerHTML = `
       <td class="ci-td-cliente" title="${escapeHtml(nombreCliente)}">${escapeHtml(nombreCliente)}</td>
-      <td>${celda(c.anterior)}</td>
-      <td>${celda(c.actual)}</td>`;
+      ${buckets.map(b=> `<td>${celda(b)}</td>`).join('')}`;
     tr.addEventListener('click', ()=> toggleVisitaCliente(nombreCliente));
     tbody.appendChild(tr);
   });
@@ -1618,7 +1649,6 @@ function rowClass(r){
 }
 
 /* ---------- referencias DOM ---------- */
-const totalCountEl = document.getElementById('totalCount');
 const cardTotal = document.getElementById('cardTotal');
 const cardVencidas = document.getElementById('cardVencidas');
 const cardPendientes = document.getElementById('cardPendientes');
@@ -1786,7 +1816,6 @@ function getFiltered(){
 /* ---------- render principal ---------- */
 function render(){
   const filtered = getFiltered();
-  totalCountEl.textContent = filtered.length;
 
   // Tarjetas: se calculan a partir de la columna Z (ESTADO). Las "gestionadas"
   // ya vienen excluidas desde la carga del archivo (columna GESTIÓN = AB).
@@ -2572,6 +2601,29 @@ function buildReviewerMap(wb){
   return { map, nameByTag };
 }
 
+/* Lista de clientes ACTIVOS, tomada de la hoja LISTAS (columna N =
+   nombre del cliente, columna Q = estado). Solo se incluyen los
+   clientes cuya columna Q sea exactamente "ACTIVO". Se lee dinámicamente
+   del propio archivo cargado; nunca se hardcodea. */
+function buildClientesActivos(wb){
+  const map = new Map(); // "nombre en minúsculas" -> "nombre original"
+  const wsListas = wb.Sheets['LISTAS'];
+  if(!wsListas || !wsListas['!ref']) return map;
+  const range = XLSX.utils.decode_range(wsListas['!ref']);
+  const colN = XLSX.utils.decode_col('N');
+  const colQ = XLSX.utils.decode_col('Q');
+  for(let r = range.s.r; r <= range.e.r; r++){
+    const cellN = wsListas[XLSX.utils.encode_cell({r:r, c:colN})];
+    const cellQ = wsListas[XLSX.utils.encode_cell({r:r, c:colQ})];
+    const nombre = cellN ? norm(cellN.v) : '';
+    const estado = cellQ ? norm(cellQ.v).toUpperCase() : '';
+    if(nombre && estado === 'ACTIVO'){
+      map.set(nombre.toLowerCase(), nombre);
+    }
+  }
+  return map;
+}
+
 function parseWorkbook(arrayBuffer){
   const wb = XLSX.read(arrayBuffer, {type:'array', cellDates:true});
   let sheetName = wb.SheetNames.includes('TAREAS 2026') ? 'TAREAS 2026' : wb.SheetNames[0];
@@ -2648,7 +2700,8 @@ function parseWorkbook(arrayBuffer){
     });
   });
   const rm = buildReviewerMap(wb);
-  return { data: out, reviewerMap: rm.map, reviewerNameByTag: rm.nameByTag };
+  const clientesActivos = buildClientesActivos(wb);
+  return { data: out, reviewerMap: rm.map, reviewerNameByTag: rm.nameByTag, clientesActivos };
 }
 
 /* Procesa el ArrayBuffer del archivo cargado manualmente y actualiza
@@ -2666,6 +2719,7 @@ function procesarArrayBuffer(arrayBuffer){
     activeData = currentData.filter(r=> r.g !== 'GESTIONADO');
     reviewerMap = parsedResult.reviewerMap;
     reviewerNameByTag = parsedResult.reviewerNameByTag;
+    clientesActivos = parsedResult.clientesActivos;
     FILTERS_CONFIG.forEach(cfg=>filters[cfg.key].clear());
     filters.estado.clear();
     filters.revisionOnly = false;
@@ -2682,7 +2736,7 @@ function procesarArrayBuffer(arrayBuffer){
     visitasFilters.apoyo.clear();
     visitasCategoriaFilter = null;
     visitasSubFilter = null;
-    ciMatrixFilters = { comite: { anterior:null, actual:null }, reunion: { anterior:null, actual:null } };
+    ciMatrixFilters = { comite: [null,null,null,null,null,null], reunion: [null,null,null,null,null,null] };
     visitasMesInicializado = false; // recalcula el mes en curso/anterior con la fecha de hoy
     renderVisitas();
     setLastUpdated(new Date());
@@ -2744,6 +2798,8 @@ function generarHtmlActualizado(){
   html = html.replace('let reviewerMap = {};', 'let reviewerMap = ' + reviewerJson + ';');
   const reviewerNameJson = JSON.stringify(reviewerNameByTag);
   html = html.replace('let reviewerNameByTag = {};', 'let reviewerNameByTag = ' + reviewerNameJson + ';');
+  const clientesActivosJson = JSON.stringify(Array.from(clientesActivos.entries()));
+  html = html.replace('let clientesActivos = new Map(); // "nombre en minúsculas" -> "nombre original", con ESTADO = "ACTIVO" en LISTAS!N:Q', 'let clientesActivos = new Map(' + clientesActivosJson + ');');
   const fechaRef = lastLoadedAt || new Date();
   // OJO: 'setLastUpdated(null);' aparece dos veces en el outerHTML: una vez
   // como texto literal dentro de esta misma función (el argumento de este
