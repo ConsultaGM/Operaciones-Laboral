@@ -255,12 +255,21 @@
   .ci-matrix-scroll{overflow-x:auto; max-height:460px; overflow-y:auto;}
   .ci-matrix{width:100%; min-width:720px; border-collapse:collapse; font-size:.9rem;}
   .ci-matrix thead th{
-    background:var(--gris); color:#fff; text-align:center; padding:7px 8px;
-    font-size:.7rem; text-transform:uppercase; letter-spacing:.3px;
-    position:sticky; top:0; z-index:1; min-width:64px;
+    background:var(--gris); color:#fff; text-align:center; padding:7px 10px;
+    font-size:.72rem; text-transform:uppercase; letter-spacing:.3px;
+    position:sticky; top:0; z-index:1; min-width:64px; white-space:normal; line-height:1.25;
   }
   .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:230px;}
-  .ci-matrix thead th.ci-th-total{min-width:70px; background:#5d5f61;}
+  .ci-matrix thead th.ci-th-total{min-width:80px; background:#5d5f61;}
+  /* Encabezado simple ordenable (tablas de Ingresos/Salidas y
+     Productividad): etiqueta completa + flecha de orden, sin recortar. */
+  .ci-th-simple{
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    cursor:pointer; user-select:none; white-space:normal; text-align:center;
+  }
+  .ci-th-simple:hover{opacity:.85;}
+  .ci-th-simple .ci-sort-btn{font-size:.75rem;}
+  .ci-matrix thead th.ci-th-cliente.ci-th-simple{justify-content:flex-start;}
   .ci-matrix tbody td{padding:6px 8px; border-top:1px solid var(--borde); text-align:center;}
   .ci-matrix tbody td.ci-td-cliente{
     text-align:left; font-size:.92rem; white-space:nowrap;
@@ -2439,36 +2448,32 @@ function renderGraficoDiario(filtered){
    no el estado de las tareas activas. Por eso son independientes de
    los filtros compartidos de Cliente/Fidelizador/Apoyo/Tipo/Estado.
    ========================================================== */
-function normCanalKey(v){ return norm(v).toLowerCase(); }
-function normCanalLabel(v){
-  const s = norm(v);
-  if(!s) return '';
-  return s.toLowerCase().replace(/(^|\s)([a-zà-ÿ])/g, (m,p1,p2)=> p1 + p2.toUpperCase());
-}
-/* Canales de ingreso distintos presentes en el archivo (columna G),
-   normalizados para que "correo"/"Correo"/"CORREO" cuenten como uno solo. */
-function getCanalesDistintos(){
-  const map = new Map(); // key en minúsculas -> etiqueta a mostrar
-  currentData.forEach(r=>{
-    if(!r.can) return;
-    const k = normCanalKey(r.can);
-    if(!map.has(k)) map.set(k, normCanalLabel(r.can));
-  });
-  return Array.from(map.entries())
-    .sort((a,b)=> a[1].localeCompare(b[1],'es'))
-    .map(([key,label])=>({key,label}));
+/* Agrupación fija de canales de ingreso (columna G) en 4 categorías,
+   para no congestionar las tablas con decenas de canales distintos. */
+const CANAL_GRUPOS = [
+  { key:'correo',   label:'Correo' },
+  { key:'whatsapp', label:'Whatsapp (incluye Llamada)' },
+  { key:'reunion',  label:'Reunión' },
+  { key:'otros',    label:'Otros' }
+];
+function grupoCanal(canalRaw){
+  const c = norm(canalRaw).toLowerCase();
+  if(!c) return 'otros';
+  if(c.includes('correo')) return 'correo';
+  if(c.includes('whatsapp') || c.includes('llamada')) return 'whatsapp';
+  if(c.includes('reuni')) return 'reunion'; // reunión presencial / virtual
+  return 'otros';
 }
 
-/* Cuenta ingresos (columna C, discriminados por canal G, excluyendo
+/* Cuenta ingresos (columna C, agrupados en CANAL_GRUPOS, excluyendo
    ESTADO = "Subtarea abierta") y salidas (columna R) para una lista de
    "periodos" (meses o días). keyFnFecha/keyFnRespuesta reciben la fecha
    ISO de la tarea y devuelven la llave de periodo a la que pertenece. */
 function calcularIngresosSalidas(periodos, keyFnFecha, keyFnRespuesta){
-  const canales = getCanalesDistintos();
   const idxByKey = new Map(periodos.map((p,i)=>[p.key, i]));
   const filas = periodos.map(()=>{
-    const o = { canales:{}, sinCanal:0, salidas:0 };
-    canales.forEach(c=> o.canales[c.key] = 0);
+    const o = { canales:{}, salidas:0 };
+    CANAL_GRUPOS.forEach(c=> o.canales[c.key] = 0);
     return o;
   });
   currentData.forEach(r=>{
@@ -2476,13 +2481,7 @@ function calcularIngresosSalidas(periodos, keyFnFecha, keyFnRespuesta){
       const pk = keyFnFecha(r.f);
       const idx = idxByKey.get(pk);
       if(idx !== undefined){
-        if(r.can){
-          const k = normCanalKey(r.can);
-          if(filas[idx].canales[k] === undefined) filas[idx].canales[k] = 0;
-          filas[idx].canales[k]++;
-        } else {
-          filas[idx].sinCanal++;
-        }
+        filas[idx].canales[grupoCanal(r.can)]++;
       }
     }
     if(r.fr){
@@ -2491,59 +2490,104 @@ function calcularIngresosSalidas(periodos, keyFnFecha, keyFnRespuesta){
       if(idx2 !== undefined) filas[idx2].salidas++;
     }
   });
-  return { canales, filas };
+  return { filas };
 }
 
 /* Tabla genérica Ingresos/Salidas: una fila por periodo (mes o día),
-   columnas por canal + "Sin canal" + "Salidas" + "Total" (Ingresos -
-   Salidas), con fila de Total al pie. */
-function renderTablaIngresosSalidas(contenedorId, periodos, data, primeraColLabel){
+   columnas por cada grupo de canal (se omiten los que sumen 0 en toda
+   la tabla, para no congestionarla) + "Salidas" + "Total" (suma de
+   TODOS los ingresos, incluidos los grupos ocultos, menos Salidas).
+   Cada encabezado (incluida la primera columna) se puede usar para
+   ordenar la tabla, ascendente o descendente. */
+let ioSortState = { porMes: {col:null, dir:null}, porDia: {col:null, dir:null} };
+function toggleIoSort(tablaKey, col){
+  const s = ioSortState[tablaKey];
+  if(s.col !== col){ s.col = col; s.dir = 'desc'; }
+  else if(s.dir === 'desc'){ s.dir = 'asc'; }
+  else { s.col = null; s.dir = null; }
+  renderOperacionesIngresosSalidas();
+}
+function renderTablaIngresosSalidas(contenedorId, tablaKey, periodos, data, primeraColLabel){
   const cont = document.getElementById(contenedorId);
   if(!cont) return;
-  const { canales, filas } = data;
+  const { filas } = data;
   cont.innerHTML = '';
   if(periodos.length === 0){
     cont.innerHTML = '<div class="empty-msg">Sin datos.</div>';
     return;
   }
+
+  // Grupos de canal con al menos un ingreso en toda la tabla (se
+  // excluyen los que totalizan 0 para no congestionar la vista).
+  const gruposVisibles = CANAL_GRUPOS.filter(g=> filas.some(f=> f.canales[g.key] > 0));
+
+  // Construye, por periodo, {ingresoTotal, salidas, diff} y por grupo visible su valor.
+  const filasCalc = periodos.map((p, idx)=>{
+    const f = filas[idx];
+    let ingresoTotal = 0;
+    CANAL_GRUPOS.forEach(g=> ingresoTotal += f.canales[g.key]);
+    return { label:p.label, canales:f.canales, salidas:f.salidas, diff: ingresoTotal - f.salidas };
+  });
+
+  const sortState = ioSortState[tablaKey];
+  let ordenIdx = periodos.map((_,i)=>i);
+  if(sortState.col){
+    ordenIdx.sort((ia, ib)=>{
+      const fa = filasCalc[ia], fb = filasCalc[ib];
+      let va, vb;
+      if(sortState.col === 'periodo'){ va = fa.label; vb = fb.label; }
+      else if(sortState.col === 'salidas'){ va = fa.salidas; vb = fb.salidas; }
+      else if(sortState.col === 'total'){ va = fa.diff; vb = fb.diff; }
+      else { va = fa.canales[sortState.col] || 0; vb = fb.canales[sortState.col] || 0; }
+      if(typeof va === 'string') return sortState.dir === 'asc' ? va.localeCompare(vb,'es') : vb.localeCompare(va,'es');
+      return sortState.dir === 'asc' ? va - vb : vb - va;
+    });
+  }
+
+  const thOrdenable = (col, label, thClass)=>{
+    const activo = sortState.col === col;
+    const icono = activo ? (sortState.dir === 'asc' ? '▲' : '▼') : '⇅';
+    const claseAttr = thClass ? ` class="${thClass}"` : '';
+    return `<th${claseAttr}><div class="ci-th-simple" data-tabla="${tablaKey}" data-col="${col}"><span>${escapeHtml(label)}</span><span class="ci-sort-btn${activo?' active':''}">${icono}</span></div></th>`;
+  };
+
   const table = document.createElement('table');
   table.className = 'ci-matrix';
-  const headCanales = canales.map(c=> `<th>${escapeHtml(c.label)}</th>`).join('');
+  const headCanales = gruposVisibles.map(g=> thOrdenable(g.key, g.label)).join('');
   table.innerHTML = `
     <thead><tr>
-      <th class="ci-th-cliente">${escapeHtml(primeraColLabel)}</th>
+      ${thOrdenable('periodo', primeraColLabel)}
       ${headCanales}
-      <th>Sin canal</th>
-      <th>Salidas</th>
-      <th class="ci-th-total">Total</th>
+      ${thOrdenable('salidas','Salidas')}
+      ${thOrdenable('total','Total (Ingresos − Salidas)', 'ci-th-total')}
     </tr></thead>
     <tbody></tbody>
     <tfoot></tfoot>`;
+  table.querySelectorAll('.ci-th-simple').forEach(el=>{
+    el.addEventListener('click', ()=> toggleIoSort(el.dataset.tabla, el.dataset.col));
+  });
+
   const tbody = table.querySelector('tbody');
-  const totalesCanal = canales.map(()=>0);
-  let totalSinCanal = 0, totalSalidas = 0, totalGeneral = 0;
-  periodos.forEach((p, idx)=>{
-    const fila = filas[idx];
-    let ingresosFila = fila.sinCanal;
-    const celdasCanal = canales.map((c,ci)=>{
-      const v = fila.canales[c.key] || 0;
-      ingresosFila += v; totalesCanal[ci] += v;
+  const totalesCanal = {}; gruposVisibles.forEach(g=> totalesCanal[g.key] = 0);
+  let totalSalidas = 0, totalGeneral = 0;
+  ordenIdx.forEach(i=>{
+    const f = filasCalc[i];
+    const celdasCanal = gruposVisibles.map(g=>{
+      const v = f.canales[g.key] || 0;
+      totalesCanal[g.key] += v;
       return `<td>${v}</td>`;
     }).join('');
-    totalSinCanal += fila.sinCanal;
-    totalSalidas += fila.salidas;
-    const diff = ingresosFila - fila.salidas;
-    totalGeneral += diff;
+    totalSalidas += f.salidas;
+    totalGeneral += f.diff;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="ci-td-cliente">${escapeHtml(p.label)}</td>${celdasCanal}<td>${fila.sinCanal}</td><td>${fila.salidas}</td><td class="ci-td-total">${diff}</td>`;
+    tr.innerHTML = `<td class="ci-td-cliente">${escapeHtml(f.label)}</td>${celdasCanal}<td>${f.salidas}</td><td class="ci-td-total">${f.diff}</td>`;
     tbody.appendChild(tr);
   });
   const tfoot = table.querySelector('tfoot');
-  const celdasTotalCanal = totalesCanal.map(v=> `<td>${v}</td>`).join('');
-  tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotalCanal}<td>${totalSinCanal}</td><td>${totalSalidas}</td><td>${totalGeneral}</td></tr>`;
+  const celdasTotalCanal = gruposVisibles.map(g=> `<td>${totalesCanal[g.key]}</td>`).join('');
+  tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotalCanal}<td>${totalSalidas}</td><td>${totalGeneral}</td></tr>`;
   cont.appendChild(table);
 }
-
 /* Días del mes correspondiente a una llave "AAAA-MM". */
 function diasDelMes(mesKey){
   const [y, m] = mesKey.split('-').map(Number);
@@ -2577,12 +2621,12 @@ function renderOperacionesIngresosSalidas(){
   if(!contMes) return; // la vista Operaciones aún no está en el DOM
   const meses = getVentana6Meses();
   const dataMes = calcularIngresosSalidas(meses, iso=>iso.slice(0,7), iso=>iso.slice(0,7));
-  renderTablaIngresosSalidas('ioPorMes', meses, dataMes, 'Mes');
+  renderTablaIngresosSalidas('ioPorMes', 'porMes', meses, dataMes, 'Mes');
 
   renderOpsDiaMesChips();
   const dias = diasDelMes(opsDiaMesSeleccionado);
   const dataDia = calcularIngresosSalidas(dias, iso=>iso, iso=>iso);
-  renderTablaIngresosSalidas('ioPorDia', dias, dataDia, 'Día');
+  renderTablaIngresosSalidas('ioPorDia', 'porDia', dias, dataDia, 'Día');
 }
 
 /* Productividad: Gestiones (por Abogado de Apoyo, columna M) y
@@ -2612,35 +2656,70 @@ function calcularProductividad(){
   return { meses, abogados };
 }
 
+let productividadSort = { col:null, dir:null }; // col: 'TOTAL' | 'nombre' | `${mesIdx}:gestiones` | `${mesIdx}:revisiones`
+function toggleProductividadSort(col){
+  if(productividadSort.col !== col){ productividadSort.col = col; productividadSort.dir = 'desc'; }
+  else if(productividadSort.dir === 'desc'){ productividadSort.dir = 'asc'; }
+  else { productividadSort.col = null; productividadSort.dir = null; }
+  renderProductividad();
+}
 function renderProductividad(){
   const cont = document.getElementById('productividadTabla');
   if(!cont) return;
   const { meses, abogados } = calcularProductividad();
-  const nombres = Array.from(abogados.keys()).sort((a,b)=> a.localeCompare(b,'es'));
+  const totalAbogadoMap = new Map();
+  abogados.forEach((datos, nombre)=>{
+    totalAbogadoMap.set(nombre, datos.reduce((acc,d)=> acc + d.gestiones + d.revisiones, 0));
+  });
+  let nombres = Array.from(abogados.keys());
+  if(productividadSort.col){
+    nombres.sort((a,b)=>{
+      let va, vb;
+      if(productividadSort.col === 'TOTAL'){ va = totalAbogadoMap.get(a); vb = totalAbogadoMap.get(b); }
+      else if(productividadSort.col === 'nombre'){ va = a; vb = b; }
+      else {
+        const [idxStr, metrica] = productividadSort.col.split(':');
+        const idx = parseInt(idxStr,10);
+        va = abogados.get(a)[idx][metrica]; vb = abogados.get(b)[idx][metrica];
+      }
+      if(typeof va === 'string') return productividadSort.dir === 'asc' ? va.localeCompare(vb,'es') : vb.localeCompare(va,'es');
+      const diff = productividadSort.dir === 'asc' ? va - vb : vb - va;
+      return diff !== 0 ? diff : a.localeCompare(b,'es');
+    });
+  } else {
+    nombres.sort((a,b)=> a.localeCompare(b,'es'));
+  }
   cont.innerHTML = '';
   if(nombres.length === 0){
     cont.innerHTML = '<div class="empty-msg">Sin datos.</div>';
     return;
   }
+  const sortArrow = (col)=>{
+    const activo = productividadSort.col === col;
+    const icono = activo ? (productividadSort.dir === 'asc' ? '▲' : '▼') : '⇅';
+    return `<span class="ci-sort-btn${activo?' active':''}" data-col="${col}">${icono}</span>`;
+  };
   const table = document.createElement('table');
   table.className = 'ci-matrix';
   const filaMeses = `<tr>
-      <th class="ci-th-cliente" rowspan="2">Abogado</th>
+      <th class="ci-th-cliente ci-th-simple" rowspan="2" data-col="nombre"><span>Abogado</span>${sortArrow('nombre')}</th>
       ${meses.map(m=> `<th colspan="2">${escapeHtml(m.label)}</th>`).join('')}
-      <th class="ci-th-total" rowspan="2">Total</th>
+      <th class="ci-th-total ci-th-simple" rowspan="2" data-col="TOTAL"><span>Total</span>${sortArrow('TOTAL')}</th>
     </tr>
-    <tr>${meses.map(()=> '<th>Gestiones</th><th>Revisiones</th>').join('')}</tr>`;
+    <tr>${meses.map((m,idx)=> `<th class="ci-th-simple" data-col="${idx}:gestiones"><span>Gestiones</span>${sortArrow(idx+':gestiones')}</th><th class="ci-th-simple" data-col="${idx}:revisiones"><span>Revisiones</span>${sortArrow(idx+':revisiones')}</th>`).join('')}</tr>`;
   table.innerHTML = `<thead>${filaMeses}</thead><tbody></tbody><tfoot></tfoot>`;
+  table.querySelectorAll('thead .ci-th-simple').forEach(th=>{
+    th.addEventListener('click', ()=> toggleProductividadSort(th.dataset.col));
+  });
   const tbody = table.querySelector('tbody');
   const totalesPorMes = meses.map(()=>({gestiones:0, revisiones:0}));
   let granTotal = 0;
   nombres.forEach(nombre=>{
     const datos = abogados.get(nombre);
-    let totalAbogado = 0;
+    const totalAbogado = totalAbogadoMap.get(nombre);
     const celdas = datos.map((d, idx)=>{
       totalesPorMes[idx].gestiones += d.gestiones;
       totalesPorMes[idx].revisiones += d.revisiones;
-      totalAbogado += d.gestiones + d.revisiones;
       return `<td>${d.gestiones}</td><td>${d.revisiones}</td>`;
     }).join('');
     granTotal += totalAbogado;
