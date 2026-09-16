@@ -253,14 +253,30 @@
   .sw-ci-programado{background:var(--amarillo);}
   .sw-ci-no{background:#e3e3e5;}
   .ci-matrix-scroll{overflow-x:auto; max-height:460px; overflow-y:auto;}
-  .ci-matrix{width:100%; min-width:720px; border-collapse:collapse; font-size:.9rem;}
+  .ci-matrix{width:auto; min-width:720px; border-collapse:collapse; font-size:.9rem;}
+  /* Encabezado pegado (sticky) al hacer scroll. Cuando hay 2 filas de
+     encabezado (Comité + Reunión consolidados), cada fila necesita su
+     propio "top" (la fila 2 debe quedar JUSTO debajo de la fila 1); si
+     ambas usaran top:0 competirían por el mismo lugar y una se perdería
+     al hacer scroll, que es justo lo que pasaba. */
   .ci-matrix thead th{
     background:var(--gris); color:#fff; text-align:center; padding:7px 10px;
     font-size:.72rem; text-transform:uppercase; letter-spacing:.3px;
-    position:sticky; top:0; z-index:1; min-width:64px; white-space:normal; line-height:1.25;
+    position:sticky; top:0; z-index:2; min-width:64px; white-space:normal; line-height:1.25;
   }
-  .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:230px;}
-  .ci-matrix thead th.ci-th-total{min-width:80px; background:#5d5f61;}
+  .ci-matrix thead th.ci-th-fila1{ height:36px; }
+  .ci-matrix thead th.ci-th-fila2{ top:36px; }
+  .ci-matrix thead th.ci-th-unica{ top:0; }
+  .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:270px; top:0;}
+  .ci-matrix thead th.ci-th-cliente > div:first-child{margin-bottom:5px; font-weight:700;}
+  .ci-cliente-search{
+    width:100%; box-sizing:border-box; padding:5px 8px; border-radius:6px;
+    border:1px solid #555; font-size:.78rem; font-weight:400; text-transform:none;
+    background:#fff; color:#2b2b2d; letter-spacing:normal;
+  }
+  .ci-cliente-search::placeholder{color:#9a9a9a;}
+  .ci-cliente-search:focus{outline:2px solid var(--lima); outline-offset:1px;}
+  .ci-matrix thead th.ci-th-total{min-width:80px; background:#5d5f61; top:0;}
   /* Encabezado simple ordenable (tablas de Ingresos/Salidas y
      Productividad): etiqueta completa + flecha de orden, sin recortar. */
   .ci-th-simple{
@@ -1116,6 +1132,22 @@ function fmtDate(iso){
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+/* Cuando un <thead> tiene más de una fila (ej. mes arriba, métrica
+   abajo), 'position:sticky; top:0' en TODAS las celdas hace que ambas
+   filas intenten pegarse en el mismo punto y la de abajo tape/pierda a
+   la de arriba al hacer scroll. Este helper mide la altura real de
+   cada fila del encabezado (ya insertada en el DOM) y le da a cada una
+   el 'top' que le corresponde, para que ambas queden fijas y apiladas
+   correctamente. */
+function fijarEncabezadosSticky(table){
+  const filas = Array.from(table.querySelectorAll('thead tr'));
+  if(filas.length === 0) return;
+  const base = filas[0].getBoundingClientRect().top;
+  filas.forEach(tr=>{
+    const offset = Math.round(tr.getBoundingClientRect().top - base);
+    Array.from(tr.children).forEach(th=>{ th.style.top = offset + 'px'; });
+  });
+}
 function uniqueSorted(arr){
   const map = new Map();
   arr.forEach(v=>{
@@ -1564,17 +1596,40 @@ const CI_MATRIX_METRICAS = {
    - sort: { metrica: 'TOTAL' | nombre de métrica | null, mesIdx: número | null, dir: 'asc'|'desc'|null } */
 let ciMatrixState = {
   comite:  { filtros:{ comite: [null,null,null,null,null,null] },
-             sort:{ metrica:null, mesIdx:null, dir:null } },
+             sort:{ metrica:null, mesIdx:null, dir:null }, busqueda:'' },
   reunion: { filtros:{ reunion:[null,null,null,null,null,null], comite:[null,null,null,null,null,null] },
-             sort:{ metrica:null, mesIdx:null, dir:null } }
+             sort:{ metrica:null, mesIdx:null, dir:null }, busqueda:'' }
 };
 function resetCiMatrixState(){
   ciMatrixState = {
     comite:  { filtros:{ comite: [null,null,null,null,null,null] },
-               sort:{ metrica:null, mesIdx:null, dir:null } },
+               sort:{ metrica:null, mesIdx:null, dir:null }, busqueda:'' },
     reunion: { filtros:{ reunion:[null,null,null,null,null,null], comite:[null,null,null,null,null,null] },
-               sort:{ metrica:null, mesIdx:null, dir:null } }
+               sort:{ metrica:null, mesIdx:null, dir:null }, busqueda:'' }
   };
+}
+/* Vuelve a pintar preservando el foco y la posición del cursor de un
+   <input> de búsqueda si el usuario estaba escribiendo en él — sin
+   esto, cada tecla reconstruiría la tabla entera y el input perdería
+   el foco. */
+function reRenderPreservandoFoco(renderFn){
+  const activo = document.activeElement;
+  let info = null;
+  if(activo && activo.classList && activo.classList.contains('ci-cliente-search')){
+    info = { id: activo.id, start: activo.selectionStart, end: activo.selectionEnd };
+  }
+  renderFn();
+  if(info){
+    const el = document.getElementById(info.id);
+    if(el){
+      el.focus();
+      try{ el.setSelectionRange(info.start, info.end); }catch(e){}
+    }
+  }
+}
+function onCiBusquedaInput(tipo, valor){
+  ciMatrixState[tipo].busqueda = norm(valor).toLowerCase();
+  reRenderPreservandoFoco(renderVisitas);
 }
 function toggleCiFiltro(tipo, metrica, idx, valor){
   const f = ciMatrixState[tipo].filtros[metrica];
@@ -1661,6 +1716,9 @@ function renderMatrizVisitas(tipo, rowsPool, contenedorId){
     const buckets = conteo.get(nombre);
     return metricas.every(mk=> buckets.every((mesBuckets,idx)=> cumple(mesBuckets[mk], state.filtros[mk][idx])));
   });
+  if(state.busqueda){
+    clientes = clientes.filter(nombre=> nombre.toLowerCase().includes(state.busqueda));
+  }
 
   // Orden: por Total, o por una métrica de un mes concreto; por defecto
   // alfabético.
@@ -1688,12 +1746,12 @@ function renderMatrizVisitas(tipo, rowsPool, contenedorId){
     const icono = activo ? (state.sort.dir === 'asc' ? '▲' : '▼') : '⇅';
     return `<button type="button" class="ci-sort-btn${activo?' active':''}" data-tipo="${tipo}" data-metrica="${metrica}" data-idx="${mesIdx===null?'':mesIdx}" title="Ordenar">${icono}</button>`;
   };
-  const thMetrica = (m, idx, mk)=>{
+  const thMetrica = (m, idx, mk, filaClass)=>{
     const f = state.filtros[mk];
     const activeSi = f[idx] === 'SI', activeNo = f[idx] === 'NO';
     const label = metricas.length > 1 ? VISITA_METRICS[mk].label : m.label;
     return `
-      <th>
+      <th class="${filaClass}">
         <div class="ci-th-mes">
           <div class="ci-th-mes-label"><span>${escapeHtml(label)}</span>${sortArrow(mk, idx)}</div>
           <div class="ci-th-filter">
@@ -1703,23 +1761,34 @@ function renderMatrizVisitas(tipo, rowsPool, contenedorId){
         </div>
       </th>`;
   };
+  const inputId = `ciSearch-${contenedorId}`;
+  const thCliente = (rowspanAttr)=> `
+    <th class="ci-th-cliente"${rowspanAttr}>
+      <div>Cliente</div>
+      <input type="text" class="ci-cliente-search" id="${inputId}" placeholder="Buscar cliente..." value="${escapeHtml(state.busqueda)}">
+    </th>`;
   const table = document.createElement('table');
   table.className = 'ci-matrix';
   const filaMeses = metricas.length > 1
     ? `<tr>
-        <th class="ci-th-cliente" rowspan="2">Cliente</th>
-        ${meses.map(m=> `<th colspan="${metricas.length}">${escapeHtml(m.label)}</th>`).join('')}
+        ${thCliente(' rowspan="2"')}
+        ${meses.map(m=> `<th class="ci-th-fila1" colspan="${metricas.length}">${escapeHtml(m.label)}</th>`).join('')}
         <th class="ci-th-total" rowspan="2">Total<br>${sortArrow('TOTAL', null)}</th>
       </tr>
       <tr>
-        ${meses.map((m,idx)=> metricas.map(mk=> thMetrica(m,idx,mk)).join('')).join('')}
+        ${meses.map((m,idx)=> metricas.map(mk=> thMetrica(m,idx,mk,'ci-th-fila2')).join('')).join('')}
       </tr>`
     : `<tr>
-        <th class="ci-th-cliente">Cliente</th>
-        ${meses.map((m,idx)=> thMetrica(m,idx,metricas[0])).join('')}
+        ${thCliente('')}
+        ${meses.map((m,idx)=> thMetrica(m,idx,metricas[0],'ci-th-unica')).join('')}
         <th class="ci-th-total">Total<br>${sortArrow('TOTAL', null)}</th>
       </tr>`;
   table.innerHTML = `<thead>${filaMeses}</thead><tbody></tbody><tfoot></tfoot>`;
+  const inputBusqueda = table.querySelector(`#${CSS.escape(inputId)}`);
+  if(inputBusqueda){
+    inputBusqueda.addEventListener('click', e=> e.stopPropagation());
+    inputBusqueda.addEventListener('input', ()=> onCiBusquedaInput(tipo, inputBusqueda.value));
+  }
   table.querySelectorAll('.ci-th-btn').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -1739,6 +1808,7 @@ function renderMatrizVisitas(tipo, rowsPool, contenedorId){
   if(clientes.length === 0){
     tbody.innerHTML = `<tr><td colspan="${totalCols}" class="empty-msg">Sin clientes para los filtros seleccionados.</td></tr>`;
     cont.appendChild(table);
+    fijarEncabezadosSticky(table);
     return;
   }
 
@@ -1780,131 +1850,7 @@ function renderMatrizVisitas(tipo, rowsPool, contenedorId){
   tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotal}<td>${granTotal}</td></tr>`;
 
   cont.appendChild(table);
-}
-
-/* Matriz "Cliente x Mes" (mes actual + 5 anteriores): para cada cliente
-   ACTIVO (según LISTAS!N:Q) cuenta cuántas tareas de un único tipo de
-   visita (Comité o Reunión+Capacitación, ya viene filtrado en 'rows')
-   tiene en cada uno de los 6 meses, separadas entre ya gestionadas
-   (Realizado) y pendientes (Programado). Clic en una fila = filtro por
-   ese cliente; los botones SÍ/NO del encabezado filtran la tabla por
-   ese mes. */
-function renderMatrizClientes(rows, contenedorId, tipo){
-  const cont = document.getElementById(contenedorId);
-  if(!cont) return;
-  const meses = getVentana6Meses(); // 6 meses, ascendente
-
-  // Universo de clientes: SOLO los que están en la hoja LISTAS (columna
-  // N) con ESTADO = "ACTIVO" (columna Q) — ya no todos los clientes que
-  // aparecen en las tareas. Se respetan Cliente y Abogado de Apoyo si
-  // están filtrados arriba.
-  let rosterNames = Array.from(clientesActivos.values());
-  if(visitasFilters.cliente.size) rosterNames = rosterNames.filter(n=> visitasFilters.cliente.has(n.toLowerCase()));
-  if(visitasFilters.apoyo.size){
-    const clientesDelAbogado = new Set(
-      getVisitasBasePool6Meses()
-        .filter(r=> visitasFilters.apoyo.has(norm(r.aa).toLowerCase()))
-        .map(r=> norm(r.c).toLowerCase())
-    );
-    rosterNames = rosterNames.filter(n=> clientesDelAbogado.has(n.toLowerCase()));
-  }
-  const rosterLower = new Map(rosterNames.map(n=>[n.toLowerCase(), n]));
-
-  // cliente -> [{realizado,programado} x 6 meses]
-  const conteo = new Map();
-  const nuevoBucket = ()=> meses.map(()=>({realizado:0, programado:0}));
-  rosterNames.forEach(n=> conteo.set(n, nuevoBucket()));
-  rows.forEach(r=>{
-    const cLower = norm(r.c).toLowerCase();
-    if(!rosterLower.has(cLower)) return; // cliente no activo en LISTAS -> se ignora
-    const nombre = rosterLower.get(cLower);
-    const idx = meses.findIndex(m=> m.key === r.fc.slice(0,7));
-    if(idx === -1) return;
-    const bucket = conteo.get(nombre)[idx];
-    if(r.g === 'GESTIONADO') bucket.realizado++; else bucket.programado++;
-  });
-
-  // Aplica el filtro SÍ/NO del encabezado (por columna, si está activo).
-  const f = ciMatrixFilters[tipo];
-  const cumple = (bucket, filtro)=>{
-    if(!filtro) return true;
-    const tieneAlgo = bucket.realizado > 0 || bucket.programado > 0;
-    return filtro === 'SI' ? tieneAlgo : !tieneAlgo;
-  };
-  const clientes = Array.from(conteo.keys())
-    .filter(nombre=> conteo.get(nombre).every((bucket,idx)=> cumple(bucket, f[idx])))
-    .sort((a,b)=> a.localeCompare(b,'es'));
-
-  cont.innerHTML = '';
-  const thMes = (m, idx)=>{
-    const activeSi = f[idx] === 'SI', activeNo = f[idx] === 'NO';
-    return `
-      <th>
-        <div class="ci-th-mes">
-          <span>${escapeHtml(m.label)}</span>
-          <div class="ci-th-filter">
-            <button type="button" class="ci-th-btn${activeSi?' active-si':''}" data-tipo="${tipo}" data-idx="${idx}" data-val="SI">SÍ</button>
-            <button type="button" class="ci-th-btn${activeNo?' active-no':''}" data-tipo="${tipo}" data-idx="${idx}" data-val="NO">NO</button>
-          </div>
-        </div>
-      </th>`;
-  };
-  const table = document.createElement('table');
-  table.className = 'ci-matrix';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th class="ci-th-cliente">Cliente</th>
-        ${meses.map((m,idx)=> thMes(m,idx)).join('')}
-      </tr>
-    </thead>
-    <tbody></tbody>`;
-  table.querySelectorAll('.ci-th-btn').forEach(btn=>{
-    btn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      toggleCiFiltro(btn.dataset.tipo, parseInt(btn.dataset.idx,10), btn.dataset.val);
-    });
-  });
-
-  const tbody = table.querySelector('tbody');
-  if(clientes.length === 0){
-    tbody.innerHTML = `<tr><td colspan="${meses.length+1}" class="empty-msg">Sin clientes para los filtros seleccionados.</td></tr>`;
-    cont.appendChild(table);
-    return;
-  }
-
-  // Comité Clientes: una única etiqueta SÍ/NO (como antes). Reuniones
-  // Clientes: la cantidad de tareas, separada por color según si ya se
-  // ejecutaron (verde) o están por adelantarse (amarillo).
-  const celda = (bucket)=>{
-    const total = bucket.realizado + bucket.programado;
-    if(total === 0) return '<span class="ci-badge ci-no">NO</span>';
-    if(tipo === 'comite'){
-      return bucket.realizado > 0
-        ? '<span class="ci-badge ci-realizado">SÍ</span>'
-        : '<span class="ci-badge ci-programado">SÍ</span>';
-    }
-    let html = '<span class="ci-count-wrap">';
-    if(bucket.realizado > 0) html += `<span class="ci-count ci-realizado" title="${bucket.realizado} ya ejecutada(s)">${bucket.realizado}</span>`;
-    if(bucket.programado > 0) html += `<span class="ci-count ci-programado" title="${bucket.programado} por ejecutar">${bucket.programado}</span>`;
-    html += '</span>';
-    return html;
-  };
-
-  clientes.forEach(nombreCliente=>{
-    const buckets = conteo.get(nombreCliente);
-    const lower = nombreCliente.toLowerCase();
-    const isActive = visitasFilters.cliente.size === 1 && visitasFilters.cliente.has(lower);
-    const tr = document.createElement('tr');
-    tr.className = 'clickable' + (isActive ? ' active' : '');
-    tr.title = `Clic para filtrar por: ${nombreCliente}`;
-    tr.innerHTML = `
-      <td class="ci-td-cliente" title="${escapeHtml(nombreCliente)}">${escapeHtml(nombreCliente)}</td>
-      ${buckets.map(b=> `<td>${celda(b)}</td>`).join('')}`;
-    tr.addEventListener('click', ()=> toggleVisitaCliente(nombreCliente));
-    tbody.appendChild(tr);
-  });
-  cont.appendChild(table);
+  fijarEncabezadosSticky(table);
 }
 
 function rowClass(r){
@@ -2590,6 +2536,7 @@ function renderTablaIngresosSalidas(contenedorId, tablaKey, periodos, data, prim
   const celdasTotalCanal = gruposVisibles.map(g=> `<td>${totalesCanal[g.key]}</td>`).join('');
   tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotalCanal}<td>${totalIngresos}</td><td>${totalSalidas}</td><td>${totalGeneral}</td></tr>`;
   cont.appendChild(table);
+  fijarEncabezadosSticky(table);
 }
 /* Días del mes correspondiente a una llave "AAAA-MM". */
 function diasDelMes(mesKey){
@@ -2706,10 +2653,10 @@ function renderProductividad(){
   table.className = 'ci-matrix';
   const filaMeses = `<tr>
       <th class="ci-th-cliente" rowspan="2"><div class="ci-th-simple" data-col="nombre"><span>Abogado</span>${sortArrow('nombre')}</div></th>
-      ${meses.map(m=> `<th colspan="2">${escapeHtml(m.label)}</th>`).join('')}
+      ${meses.map(m=> `<th class="ci-th-fila1" colspan="2">${escapeHtml(m.label)}</th>`).join('')}
       <th class="ci-th-total" rowspan="2"><div class="ci-th-simple" data-col="TOTAL"><span>Total</span>${sortArrow('TOTAL')}</div></th>
     </tr>
-    <tr>${meses.map((m,idx)=> `<th><div class="ci-th-simple" data-col="${idx}:gestiones"><span>Gestiones</span>${sortArrow(idx+':gestiones')}</div></th><th><div class="ci-th-simple" data-col="${idx}:revisiones"><span>Revisiones</span>${sortArrow(idx+':revisiones')}</div></th>`).join('')}</tr>`;
+    <tr>${meses.map((m,idx)=> `<th class="ci-th-fila2"><div class="ci-th-simple" data-col="${idx}:gestiones"><span>Gestiones</span>${sortArrow(idx+':gestiones')}</div></th><th class="ci-th-fila2"><div class="ci-th-simple" data-col="${idx}:revisiones"><span>Revisiones</span>${sortArrow(idx+':revisiones')}</div></th>`).join('')}</tr>`;
   table.innerHTML = `<thead>${filaMeses}</thead><tbody></tbody><tfoot></tfoot>`;
   table.querySelectorAll('thead .ci-th-simple').forEach(th=>{
     th.addEventListener('click', ()=> toggleProductividadSort(th.dataset.col));
@@ -2734,6 +2681,7 @@ function renderProductividad(){
   const celdasTotal = totalesPorMes.map(t=> `<td>${t.gestiones}</td><td>${t.revisiones}</td>`).join('');
   tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotal}<td>${granTotal}</td></tr>`;
   cont.appendChild(table);
+  fijarEncabezadosSticky(table);
 }
 
 function renderBarList(container, entries, filterKey){
