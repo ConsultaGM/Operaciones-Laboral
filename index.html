@@ -248,27 +248,31 @@
   .month-chip:hover{border-color:var(--oliva);}
   .month-chip.active{background:var(--oliva); border-color:var(--oliva); color:#fff;}
 
-  /* ---- Comité Clientes / Reuniones Clientes (matriz de 6 meses: mes actual + 5 anteriores) ---- */
+  /* ---- Comité Clientes / Visitas Clientes (matriz de 6 meses: mes actual + 5 anteriores) ---- */
   .sw-ci-realizado{background:var(--verde);}
   .sw-ci-programado{background:var(--amarillo);}
   .sw-ci-no{background:#e3e3e5;}
-  .ci-matrix-scroll{overflow-x:auto; max-height:420px; overflow-y:auto;}
-  .ci-matrix{width:100%; min-width:640px; border-collapse:collapse; font-size:.85rem;}
+  .ci-matrix-scroll{overflow-x:auto; max-height:460px; overflow-y:auto;}
+  .ci-matrix{width:100%; min-width:720px; border-collapse:collapse; font-size:.9rem;}
   .ci-matrix thead th{
-    background:var(--gris); color:#fff; text-align:center; padding:8px 10px;
-    font-size:.72rem; text-transform:uppercase; letter-spacing:.4px;
-    position:sticky; top:0; z-index:1; min-width:78px;
+    background:var(--gris); color:#fff; text-align:center; padding:7px 8px;
+    font-size:.7rem; text-transform:uppercase; letter-spacing:.3px;
+    position:sticky; top:0; z-index:1; min-width:64px;
   }
-  .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:150px;}
-  .ci-matrix tbody td{padding:6px 10px; border-top:1px solid var(--borde); text-align:center;}
+  .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:230px;}
+  .ci-matrix thead th.ci-th-total{min-width:70px; background:#5d5f61;}
+  .ci-matrix tbody td{padding:6px 8px; border-top:1px solid var(--borde); text-align:center;}
   .ci-matrix tbody td.ci-td-cliente{
-    text-align:left; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    text-align:left; font-size:.92rem; white-space:nowrap;
   }
+  .ci-matrix tbody td.ci-td-total{font-weight:800; background:#f7f7f4;}
   .ci-matrix tbody tr:nth-child(even){background:#fbfbfb;}
   .ci-matrix tbody tr.clickable{cursor:pointer;}
   .ci-matrix tbody tr.clickable:hover{background:#f4f6e6;}
   .ci-matrix tbody tr.active{background:#eef3cf; box-shadow:inset 0 0 0 1px var(--oliva);}
   .ci-matrix tbody tr.active .ci-td-cliente{font-weight:700; color:#4a5210;}
+  .ci-matrix tfoot td{padding:7px 8px; border-top:2px solid var(--gris); font-weight:800; text-align:center; background:#f0f0ee;}
+  .ci-matrix tfoot td.ci-td-cliente{text-align:left;}
   .ci-badge{
     display:inline-block; min-width:44px; padding:4px 8px; border-radius:999px;
     font-size:.72rem; font-weight:700; color:#fff;
@@ -276,20 +280,27 @@
   .ci-badge.ci-realizado{background:var(--verde);}
   .ci-badge.ci-programado{background:var(--amarillo); color:#4a3b00;}
   .ci-badge.ci-no{background:#e3e3e5; color:var(--gris);}
-  /* Encabezado de mes con su propio filtro SÍ/NO (segmentado, estilo
-     interruptor). Clic para reducir la tabla solo a esa condición. */
-  .ci-th-mes{display:flex; flex-direction:column; align-items:center; gap:5px;}
+  /* Encabezado de mes/métrica con su filtro SÍ/NO (segmentado, estilo
+     interruptor) y flecha de orden ascendente/descendente. */
+  .ci-th-mes{display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .ci-th-mes-label{display:flex; align-items:center; gap:4px;}
+  .ci-sort-btn{
+    border:none; background:transparent; color:#fff; cursor:pointer;
+    font-size:.7rem; padding:0 2px; line-height:1; opacity:.75;
+  }
+  .ci-sort-btn:hover{opacity:1;}
+  .ci-sort-btn.active{opacity:1; color:var(--lima);}
   .ci-th-filter{display:flex; border-radius:6px; overflow:hidden; border:1px solid #444;}
   .ci-th-btn{
-    border:none; background:#2b2b2d; color:#fff; font-size:.66rem; font-weight:700;
-    padding:3px 9px; cursor:pointer; letter-spacing:.3px;
+    border:none; background:#2b2b2d; color:#fff; font-size:.64rem; font-weight:700;
+    padding:3px 8px; cursor:pointer; letter-spacing:.3px;
   }
   .ci-th-btn + .ci-th-btn{border-left:1px solid #555;}
   .ci-th-btn.active-si{background:var(--verde);}
   .ci-th-btn.active-no{background:var(--gris);}
   .ci-th-btn:hover{opacity:.85;}
-  /* Celda con conteo (usada en Reuniones Clientes): una mini-etiqueta
-     por cada estado presente, en vez de un único "SÍ". */
+  /* Celda con conteo: una mini-etiqueta por cada estado presente, en vez
+     de un único "SÍ". */
   .ci-count-wrap{display:inline-flex; gap:4px; align-items:center; justify-content:center;}
   .ci-count{
     display:inline-block; min-width:20px; padding:2px 6px; border-radius:999px;
@@ -858,6 +869,28 @@
       <div class="chart-scroll" id="graficoDiario"></div>
     </div>
 
+    <!-- Ingresos y Salidas por mes -->
+    <div class="panel" style="margin-top:20px;">
+      <h2>Ingresos y Salidas por Mes</h2>
+      <div class="panel-sub">Ingresos: columna FECHA (C), discriminados por Canal de Ingreso (G); se excluyen las filas con ESTADO = "Subtarea abierta". Salidas: cantidad de tareas cerradas según FECHA RESPUESTA (R). Mes actual + 5 anteriores · el Total es Ingresos − Salidas. Esta gráfica y la siguiente usan la totalidad de las tareas del archivo (no dependen de los filtros de Cliente/Fidelizador/Apoyo/Tipo/Estado de arriba).</div>
+      <div class="ci-matrix-scroll" id="ioPorMes"></div>
+    </div>
+
+    <!-- Ingresos y Salidas por día, para un mes seleccionable entre los 6 -->
+    <div class="panel" style="margin-top:20px;">
+      <h2>Ingresos y Salidas por Día</h2>
+      <div class="panel-sub">Mismo criterio que la gráfica anterior (Ingresos por Canal de Ingreso, Salidas por FECHA RESPUESTA), mostrado día a día. Elige cualquiera de los 6 meses de arriba; por defecto muestra el mes actual.</div>
+      <div class="month-chips" id="ioDiaMesChips"></div>
+      <div class="ci-matrix-scroll" id="ioPorDia"></div>
+    </div>
+
+    <!-- Productividad por abogado: gestiones y revisiones -->
+    <div class="panel" style="margin-top:20px;">
+      <h2>Productividad por Abogado</h2>
+      <div class="panel-sub">Gestiones: tareas con FECHA RESPUESTA (R) en el mes, contadas por Abogado de Apoyo (M). Revisiones: tareas con FECHA RESPUESTA (R) en el mes, contadas por el abogado que efectuó la revisión (cruce de la columna Abogado Revisión (N) contra la hoja LISTAS, igual que en la Agenda). Mes actual + 5 anteriores.</div>
+      <div class="ci-matrix-scroll" id="productividadTabla"></div>
+    </div>
+
   </div><!-- /viewGerencial -->
 
   <!-- ================== VISTA VISITAS A CLIENTES ================== -->
@@ -966,34 +999,33 @@
       <div class="scroll-panel" id="visitasPorApoyo"></div>
     </div>
 
-    <!-- Comité Clientes / Reuniones Clientes: comparten espacio en dos
-         columnas. Por cada cliente ACTIVO (según LISTAS!N:Q), si tuvo/
-         tiene ese tipo de tarea en cada uno de los últimos 6 meses (mes
-         actual + 5 anteriores). Los encabezados SÍ/NO de cada mes son
-         también un filtro: al activarlos, la tabla se reduce solo a
-         los clientes que cumplen esa condición ese mes (útil para
-         detectar rápido a quién no se le ha hecho seguimiento). -->
-    <div class="grid-2-cols">
-      <div class="panel">
-        <h2>Comité Clientes</h2>
-        <div class="panel-sub">¿El cliente activo tiene tarea tipo Comité (Laboral / Labora / Convivencia) en cada uno de los últimos 6 meses (mes actual + 5 anteriores)? · clic en SÍ/NO del encabezado para filtrar por ese mes · clic en un cliente para filtrar el resto de la hoja por él.</div>
-        <div class="panel-legend">
-          <span><span class="sw sw-ci-realizado"></span>Sí, realizado</span>
-          <span><span class="sw sw-ci-programado"></span>Sí, programado</span>
-          <span><span class="sw sw-ci-no"></span>No</span>
-        </div>
-        <div class="ci-matrix-scroll" id="comiteClientesMatrix"></div>
+    <!-- Comité Clientes / Visitas Clientes (Reunión + Comité consolidado):
+         apiladas una encima de otra (no divididas en columnas) para que
+         se puedan leer con comodidad. Por cada cliente ACTIVO (según
+         LISTAS!N:Q), su actividad en cada uno de los últimos 6 meses
+         (mes actual + 5 anteriores). Cada columna de mes (y la de Total)
+         se puede ordenar ascendente/descendente con la flecha del
+         encabezado, y tiene su propio filtro SÍ/NO. -->
+    <div class="panel" style="margin-bottom:20px;">
+      <h2>Comité Clientes</h2>
+      <div class="panel-sub">¿El cliente activo tiene tarea tipo Comité (Laboral / Labora / Convivencia) en cada uno de los últimos 6 meses? · flecha del encabezado para ordenar por ese mes o por el total · SÍ/NO para filtrar por ese mes · clic en un cliente para filtrar el resto de la hoja por él.</div>
+      <div class="panel-legend">
+        <span><span class="sw sw-ci-realizado"></span>Realizados</span>
+        <span><span class="sw sw-ci-programado"></span>Programados</span>
+        <span><span class="sw sw-ci-no"></span>No</span>
       </div>
-      <div class="panel">
-        <h2>Reuniones Clientes</h2>
-        <div class="panel-sub">¿El cliente activo tiene tarea tipo Reunión o Capacitación en cada uno de los últimos 6 meses (mes actual + 5 anteriores)? · clic en SÍ/NO del encabezado para filtrar por ese mes · clic en un cliente para filtrar el resto de la hoja por él.</div>
-        <div class="panel-legend">
-          <span><span class="sw sw-ci-realizado"></span>Realizadas</span>
-          <span><span class="sw sw-ci-programado"></span>Programadas</span>
-          <span><span class="sw sw-ci-no"></span>No</span>
-        </div>
-        <div class="ci-matrix-scroll" id="reunionClientesMatrix"></div>
+      <div class="ci-matrix-scroll" id="comiteClientesMatrix"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Visitas Clientes (Reunión + Comité)</h2>
+      <div class="panel-sub">Gráfica consolidada: para cada cliente activo, cantidad de Reunión (Reunión + Capacitación) y de Comité en cada uno de los últimos 6 meses. Se puede ordenar y filtrar SÍ/NO por cada valor de forma independiente — por ejemplo, filtrar "Comité = NO" de un mes y revisar a la vez la cantidad de reuniones de ese mismo mes.</div>
+      <div class="panel-legend">
+        <span><span class="sw sw-ci-realizado"></span>Realizadas/os</span>
+        <span><span class="sw sw-ci-programado"></span>Programadas/os</span>
+        <span><span class="sw sw-ci-no"></span>No</span>
       </div>
+      <div class="ci-matrix-scroll" id="reunionClientesMatrix"></div>
     </div>
 
   </div><!-- /viewVisitas -->
@@ -1361,7 +1393,7 @@ if(_btnResetVisitas) _btnResetVisitas.addEventListener('click', ()=>{
   visitasFilters.apoyo.clear();
   visitasCategoriaFilter = null;
   visitasSubFilter = null;
-  ciMatrixFilters = { comite: [null,null,null,null,null,null], reunion: [null,null,null,null,null,null] };
+  resetCiMatrixState();
   const [mesAnterior, mesActual] = getVentanaMeses();
   visitasFilters.mes = new Set([mesAnterior.key, mesActual.key]);
   onVisitasFiltersChanged();
@@ -1489,30 +1521,256 @@ function renderVisitas(){
   const paraApoyo = aplicarFiltrosVisitas(pool, {usarApoyo:false});
   renderVisitasGrupo(paraApoyo, 'aa', 'visitasPorApoyo', 'apoyo');
 
-  // Comité Clientes / Reuniones Clientes: matriz de 6 meses (mes actual
-  // + 5 anteriores). Usan su PROPIA ventana de 6 meses (no la de 2
-  // meses del resto de la hoja) y por eso parten de
-  // getVisitasBasePool6Meses() en vez de 'pool'. Ignoran el filtro de
-  // "mes" (chips, pensado para la ventana de 2 meses) porque necesitan
-  // comparar SIEMPRE los 6 meses lado a lado, pero SÍ respetan Cliente,
-  // Abogado de Apoyo y la categoría/desglose fino de los cuadros de
-  // arriba (Total, Reunión/Capacitación, Comité Laboral/Convivencia).
+  // Comité Clientes / Visitas Clientes: matriz de 6 meses (mes actual +
+  // 5 anteriores). Usan su PROPIA ventana de 6 meses (no la de 2 meses
+  // del resto de la hoja) y por eso parten de getVisitasBasePool6Meses()
+  // en vez de 'pool'. Ignoran el filtro de "mes" (chips, pensado para
+  // la ventana de 2 meses) porque necesitan comparar SIEMPRE los 6
+  // meses lado a lado, pero SÍ respetan Cliente, Abogado de Apoyo y la
+  // categoría/desglose fino de los cuadros de arriba. Se les pasa el
+  // mismo conjunto (con ambos tipos, Reunión y Comité) porque la
+  // función genérica clasifica internamente cada fila según sus
+  // propias métricas configuradas.
   const pool6 = getVisitasBasePool6Meses();
   const paraMatriz = aplicarFiltrosVisitas(pool6, {usarMes:false});
-  renderMatrizClientes(paraMatriz.filter(esVisitaComite), 'comiteClientesMatrix', 'comite');
-  renderMatrizClientes(paraMatriz.filter(esVisitaReunion), 'reunionClientesMatrix', 'reunion');
+  renderMatrizVisitas('comite', paraMatriz, 'comiteClientesMatrix');
+  renderMatrizVisitas('reunion', paraMatriz, 'reunionClientesMatrix');
 }
 
-/* Filtro SÍ/NO propio de cada matriz, por columna de mes:
-   null (todos) | 'SI' | 'NO', un valor por cada uno de los 6 meses. */
-let ciMatrixFilters = {
-  comite: [null,null,null,null,null,null],
-  reunion:[null,null,null,null,null,null]
+/* Registro de "métricas" (tipos de visita) que puede mostrar una
+   columna de mes en las matrices de clientes. */
+const VISITA_METRICS = {
+  reunion: { label:'Reunión', test:esVisitaReunion },
+  comite:  { label:'Comité',  test:esVisitaComite  }
 };
-function toggleCiFiltro(tipo, idx, valor){
-  const f = ciMatrixFilters[tipo];
+/* Qué métricas muestra cada matriz: "comite" es de una sola métrica
+   (como antes); "reunion" es la vista consolidada con ambas. */
+const CI_MATRIX_METRICAS = {
+  comite: ['comite'],
+  reunion: ['reunion','comite']
+};
+
+/* Estado propio de cada matriz:
+   - filtros[metrica][mesIdx]: null (todos) | 'SI' | 'NO'
+   - sort: { metrica: 'TOTAL' | nombre de métrica | null, mesIdx: número | null, dir: 'asc'|'desc'|null } */
+let ciMatrixState = {
+  comite:  { filtros:{ comite: [null,null,null,null,null,null] },
+             sort:{ metrica:null, mesIdx:null, dir:null } },
+  reunion: { filtros:{ reunion:[null,null,null,null,null,null], comite:[null,null,null,null,null,null] },
+             sort:{ metrica:null, mesIdx:null, dir:null } }
+};
+function resetCiMatrixState(){
+  ciMatrixState = {
+    comite:  { filtros:{ comite: [null,null,null,null,null,null] },
+               sort:{ metrica:null, mesIdx:null, dir:null } },
+    reunion: { filtros:{ reunion:[null,null,null,null,null,null], comite:[null,null,null,null,null,null] },
+               sort:{ metrica:null, mesIdx:null, dir:null } }
+  };
+}
+function toggleCiFiltro(tipo, metrica, idx, valor){
+  const f = ciMatrixState[tipo].filtros[metrica];
   f[idx] = (f[idx] === valor) ? null : valor;
   renderVisitas();
+}
+/* Flecha de orden: clic 1 = descendente (mayor frecuencia primero),
+   clic 2 = ascendente, clic 3 = quita el orden (vuelve a alfabético). */
+function toggleCiSort(tipo, metrica, mesIdx){
+  const s = ciMatrixState[tipo].sort;
+  const esMismaColumna = s.metrica === metrica && s.mesIdx === mesIdx;
+  if(!esMismaColumna){ s.metrica = metrica; s.mesIdx = mesIdx; s.dir = 'desc'; }
+  else if(s.dir === 'desc'){ s.dir = 'asc'; }
+  else { s.metrica = null; s.mesIdx = null; s.dir = null; }
+  renderVisitas();
+}
+
+/* Matriz "Cliente x Mes" (mes actual + 5 anteriores), de 1 o 2 métricas
+   (Comité; o Reunión+Comité consolidado). Para cada cliente ACTIVO
+   (según LISTAS!N:Q), cuenta cuántas tareas de cada métrica tiene en
+   cada uno de los 6 meses, separadas entre ya gestionadas (Realizado) y
+   pendientes (Programado). Incluye columna y fila de Total, orden
+   ascendente/descendente por cualquier columna, filtro SÍ/NO por
+   columna, y clic en una fila = filtro por ese cliente. */
+function renderMatrizVisitas(tipo, rowsPool, contenedorId){
+  const cont = document.getElementById(contenedorId);
+  if(!cont) return;
+  const metricas = CI_MATRIX_METRICAS[tipo];
+  const meses = getVentana6Meses();
+  const state = ciMatrixState[tipo];
+
+  // Universo de clientes: SOLO los que están en la hoja LISTAS (columna
+  // N) con ESTADO = "ACTIVO" (columna Q). Se respetan Cliente y Abogado
+  // de Apoyo si están filtrados arriba.
+  let rosterNames = Array.from(clientesActivos.values());
+  if(visitasFilters.cliente.size) rosterNames = rosterNames.filter(n=> visitasFilters.cliente.has(n.toLowerCase()));
+  if(visitasFilters.apoyo.size){
+    const clientesDelAbogado = new Set(
+      getVisitasBasePool6Meses()
+        .filter(r=> visitasFilters.apoyo.has(norm(r.aa).toLowerCase()))
+        .map(r=> norm(r.c).toLowerCase())
+    );
+    rosterNames = rosterNames.filter(n=> clientesDelAbogado.has(n.toLowerCase()));
+  }
+  const rosterLower = new Map(rosterNames.map(n=>[n.toLowerCase(), n]));
+
+  // cliente -> [ {metrica: {realizado,programado}} x 6 meses ]
+  const conteo = new Map();
+  const nuevoBucket = ()=> meses.map(()=>{
+    const o = {};
+    metricas.forEach(mk=> o[mk] = {realizado:0, programado:0});
+    return o;
+  });
+  rosterNames.forEach(n=> conteo.set(n, nuevoBucket()));
+  rowsPool.forEach(r=>{
+    const cLower = norm(r.c).toLowerCase();
+    if(!rosterLower.has(cLower)) return; // cliente no activo en LISTAS -> se ignora
+    const nombre = rosterLower.get(cLower);
+    const idx = meses.findIndex(m=> m.key === r.fc.slice(0,7));
+    if(idx === -1) return;
+    for(const mk of metricas){
+      if(VISITA_METRICS[mk].test(r)){
+        const bucket = conteo.get(nombre)[idx][mk];
+        if(r.g === 'GESTIONADO') bucket.realizado++; else bucket.programado++;
+        break; // una tarea pertenece a una sola métrica (nunca a ambas)
+      }
+    }
+  });
+
+  const totalCliente = (nombre)=>{
+    let t = 0;
+    conteo.get(nombre).forEach(mesBuckets=> metricas.forEach(mk=> t += mesBuckets[mk].realizado + mesBuckets[mk].programado));
+    return t;
+  };
+
+  // Filtro SÍ/NO por métrica y mes (todas las condiciones activas se
+  // combinan con AND).
+  const cumple = (bucket, filtro)=>{
+    if(!filtro) return true;
+    const tieneAlgo = bucket.realizado > 0 || bucket.programado > 0;
+    return filtro === 'SI' ? tieneAlgo : !tieneAlgo;
+  };
+  let clientes = Array.from(conteo.keys()).filter(nombre=>{
+    const buckets = conteo.get(nombre);
+    return metricas.every(mk=> buckets.every((mesBuckets,idx)=> cumple(mesBuckets[mk], state.filtros[mk][idx])));
+  });
+
+  // Orden: por Total, o por una métrica de un mes concreto; por defecto
+  // alfabético.
+  if(state.sort.metrica){
+    clientes.sort((a,b)=>{
+      let va, vb;
+      if(state.sort.metrica === 'TOTAL'){ va = totalCliente(a); vb = totalCliente(b); }
+      else {
+        const ba = conteo.get(a)[state.sort.mesIdx][state.sort.metrica];
+        const bb = conteo.get(b)[state.sort.mesIdx][state.sort.metrica];
+        va = ba.realizado + ba.programado; vb = bb.realizado + bb.programado;
+      }
+      const diff = state.sort.dir === 'asc' ? va - vb : vb - va;
+      return diff !== 0 ? diff : a.localeCompare(b,'es');
+    });
+  } else {
+    clientes.sort((a,b)=> a.localeCompare(b,'es'));
+  }
+
+  cont.innerHTML = '';
+
+  // ---- Encabezado ----
+  const sortArrow = (metrica, mesIdx)=>{
+    const activo = state.sort.metrica === metrica && (metrica === 'TOTAL' || state.sort.mesIdx === mesIdx);
+    const icono = activo ? (state.sort.dir === 'asc' ? '▲' : '▼') : '⇅';
+    return `<button type="button" class="ci-sort-btn${activo?' active':''}" data-tipo="${tipo}" data-metrica="${metrica}" data-idx="${mesIdx===null?'':mesIdx}" title="Ordenar">${icono}</button>`;
+  };
+  const thMetrica = (m, idx, mk)=>{
+    const f = state.filtros[mk];
+    const activeSi = f[idx] === 'SI', activeNo = f[idx] === 'NO';
+    const label = metricas.length > 1 ? VISITA_METRICS[mk].label : m.label;
+    return `
+      <th>
+        <div class="ci-th-mes">
+          <div class="ci-th-mes-label"><span>${escapeHtml(label)}</span>${sortArrow(mk, idx)}</div>
+          <div class="ci-th-filter">
+            <button type="button" class="ci-th-btn${activeSi?' active-si':''}" data-tipo="${tipo}" data-metrica="${mk}" data-idx="${idx}" data-val="SI">SÍ</button>
+            <button type="button" class="ci-th-btn${activeNo?' active-no':''}" data-tipo="${tipo}" data-metrica="${mk}" data-idx="${idx}" data-val="NO">NO</button>
+          </div>
+        </div>
+      </th>`;
+  };
+  const table = document.createElement('table');
+  table.className = 'ci-matrix';
+  const filaMeses = metricas.length > 1
+    ? `<tr>
+        <th class="ci-th-cliente" rowspan="2">Cliente</th>
+        ${meses.map(m=> `<th colspan="${metricas.length}">${escapeHtml(m.label)}</th>`).join('')}
+        <th class="ci-th-total" rowspan="2">Total<br>${sortArrow('TOTAL', null)}</th>
+      </tr>
+      <tr>
+        ${meses.map((m,idx)=> metricas.map(mk=> thMetrica(m,idx,mk)).join('')).join('')}
+      </tr>`
+    : `<tr>
+        <th class="ci-th-cliente">Cliente</th>
+        ${meses.map((m,idx)=> thMetrica(m,idx,metricas[0])).join('')}
+        <th class="ci-th-total">Total<br>${sortArrow('TOTAL', null)}</th>
+      </tr>`;
+  table.innerHTML = `<thead>${filaMeses}</thead><tbody></tbody><tfoot></tfoot>`;
+  table.querySelectorAll('.ci-th-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      toggleCiFiltro(btn.dataset.tipo, btn.dataset.metrica, parseInt(btn.dataset.idx,10), btn.dataset.val);
+    });
+  });
+  table.querySelectorAll('.ci-sort-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const idx = btn.dataset.idx === '' ? null : parseInt(btn.dataset.idx,10);
+      toggleCiSort(btn.dataset.tipo, btn.dataset.metrica, idx);
+    });
+  });
+
+  const totalCols = 1 + meses.length * metricas.length + 1;
+  const tbody = table.querySelector('tbody');
+  if(clientes.length === 0){
+    tbody.innerHTML = `<tr><td colspan="${totalCols}" class="empty-msg">Sin clientes para los filtros seleccionados.</td></tr>`;
+    cont.appendChild(table);
+    return;
+  }
+
+  const celda = (bucket)=>{
+    const total = bucket.realizado + bucket.programado;
+    if(total === 0) return '<span class="ci-badge ci-no">NO</span>';
+    let html = '<span class="ci-count-wrap">';
+    if(bucket.realizado > 0) html += `<span class="ci-count ci-realizado" title="${bucket.realizado} ya ejecutada(s)">${bucket.realizado}</span>`;
+    if(bucket.programado > 0) html += `<span class="ci-count ci-programado" title="${bucket.programado} por ejecutar">${bucket.programado}</span>`;
+    html += '</span>';
+    return html;
+  };
+
+  clientes.forEach(nombreCliente=>{
+    const buckets = conteo.get(nombreCliente);
+    const lower = nombreCliente.toLowerCase();
+    const isActive = visitasFilters.cliente.size === 1 && visitasFilters.cliente.has(lower);
+    const tr = document.createElement('tr');
+    tr.className = 'clickable' + (isActive ? ' active' : '');
+    tr.title = `Clic para filtrar por: ${nombreCliente}`;
+    const celdas = buckets.map(mesBuckets=> metricas.map(mk=> `<td>${celda(mesBuckets[mk])}</td>`).join('')).join('');
+    tr.innerHTML = `
+      <td class="ci-td-cliente" title="${escapeHtml(nombreCliente)}">${escapeHtml(nombreCliente)}</td>
+      ${celdas}
+      <td class="ci-td-total">${totalCliente(nombreCliente)}</td>`;
+    tr.addEventListener('click', ()=> toggleVisitaCliente(nombreCliente));
+    tbody.appendChild(tr);
+  });
+
+  // ---- Fila de Total (suma por mes/métrica de los clientes visibles) ----
+  const tfoot = table.querySelector('tfoot');
+  let granTotal = 0;
+  const celdasTotal = meses.map((m,idx)=> metricas.map(mk=>{
+    let suma = 0;
+    clientes.forEach(nombre=>{ const b = conteo.get(nombre)[idx][mk]; suma += b.realizado + b.programado; });
+    granTotal += suma;
+    return `<td>${suma}</td>`;
+  }).join('')).join('');
+  tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotal}<td>${granTotal}</td></tr>`;
+
+  cont.appendChild(table);
 }
 
 /* Matriz "Cliente x Mes" (mes actual + 5 anteriores): para cada cliente
@@ -2021,6 +2279,11 @@ function renderGerencial(filtered){
 
   // Gráfica diaria: respeta todos los filtros, igual que los cuadros.
   renderGraficoDiario(paraCuadros);
+
+  // Ingresos/Salidas y Productividad: usan el archivo completo, no los
+  // filtros de arriba (ver nota en su propia función).
+  renderOperacionesIngresosSalidas();
+  renderProductividad();
 }
 
 const _btnQuitarApoyoGer = document.getElementById('btnQuitarApoyoGer');
@@ -2167,6 +2430,228 @@ function renderGraficoDiario(filtered){
     wrap.appendChild(col);
   });
   cont.appendChild(wrap);
+}
+
+/* ==========================================================
+   INGRESOS Y SALIDAS (por mes / por día) + PRODUCTIVIDAD
+   Usan el archivo COMPLETO (currentData, incluye tareas gestionadas),
+   ya que miden volumen histórico de entradas/salidas y productividad,
+   no el estado de las tareas activas. Por eso son independientes de
+   los filtros compartidos de Cliente/Fidelizador/Apoyo/Tipo/Estado.
+   ========================================================== */
+function normCanalKey(v){ return norm(v).toLowerCase(); }
+function normCanalLabel(v){
+  const s = norm(v);
+  if(!s) return '';
+  return s.toLowerCase().replace(/(^|\s)([a-zà-ÿ])/g, (m,p1,p2)=> p1 + p2.toUpperCase());
+}
+/* Canales de ingreso distintos presentes en el archivo (columna G),
+   normalizados para que "correo"/"Correo"/"CORREO" cuenten como uno solo. */
+function getCanalesDistintos(){
+  const map = new Map(); // key en minúsculas -> etiqueta a mostrar
+  currentData.forEach(r=>{
+    if(!r.can) return;
+    const k = normCanalKey(r.can);
+    if(!map.has(k)) map.set(k, normCanalLabel(r.can));
+  });
+  return Array.from(map.entries())
+    .sort((a,b)=> a[1].localeCompare(b[1],'es'))
+    .map(([key,label])=>({key,label}));
+}
+
+/* Cuenta ingresos (columna C, discriminados por canal G, excluyendo
+   ESTADO = "Subtarea abierta") y salidas (columna R) para una lista de
+   "periodos" (meses o días). keyFnFecha/keyFnRespuesta reciben la fecha
+   ISO de la tarea y devuelven la llave de periodo a la que pertenece. */
+function calcularIngresosSalidas(periodos, keyFnFecha, keyFnRespuesta){
+  const canales = getCanalesDistintos();
+  const idxByKey = new Map(periodos.map((p,i)=>[p.key, i]));
+  const filas = periodos.map(()=>{
+    const o = { canales:{}, sinCanal:0, salidas:0 };
+    canales.forEach(c=> o.canales[c.key] = 0);
+    return o;
+  });
+  currentData.forEach(r=>{
+    if(r.f && (r.e||'').toUpperCase() !== 'SUBTAREA ABIERTA'){
+      const pk = keyFnFecha(r.f);
+      const idx = idxByKey.get(pk);
+      if(idx !== undefined){
+        if(r.can){
+          const k = normCanalKey(r.can);
+          if(filas[idx].canales[k] === undefined) filas[idx].canales[k] = 0;
+          filas[idx].canales[k]++;
+        } else {
+          filas[idx].sinCanal++;
+        }
+      }
+    }
+    if(r.fr){
+      const pk2 = keyFnRespuesta(r.fr);
+      const idx2 = idxByKey.get(pk2);
+      if(idx2 !== undefined) filas[idx2].salidas++;
+    }
+  });
+  return { canales, filas };
+}
+
+/* Tabla genérica Ingresos/Salidas: una fila por periodo (mes o día),
+   columnas por canal + "Sin canal" + "Salidas" + "Total" (Ingresos -
+   Salidas), con fila de Total al pie. */
+function renderTablaIngresosSalidas(contenedorId, periodos, data, primeraColLabel){
+  const cont = document.getElementById(contenedorId);
+  if(!cont) return;
+  const { canales, filas } = data;
+  cont.innerHTML = '';
+  if(periodos.length === 0){
+    cont.innerHTML = '<div class="empty-msg">Sin datos.</div>';
+    return;
+  }
+  const table = document.createElement('table');
+  table.className = 'ci-matrix';
+  const headCanales = canales.map(c=> `<th>${escapeHtml(c.label)}</th>`).join('');
+  table.innerHTML = `
+    <thead><tr>
+      <th class="ci-th-cliente">${escapeHtml(primeraColLabel)}</th>
+      ${headCanales}
+      <th>Sin canal</th>
+      <th>Salidas</th>
+      <th class="ci-th-total">Total</th>
+    </tr></thead>
+    <tbody></tbody>
+    <tfoot></tfoot>`;
+  const tbody = table.querySelector('tbody');
+  const totalesCanal = canales.map(()=>0);
+  let totalSinCanal = 0, totalSalidas = 0, totalGeneral = 0;
+  periodos.forEach((p, idx)=>{
+    const fila = filas[idx];
+    let ingresosFila = fila.sinCanal;
+    const celdasCanal = canales.map((c,ci)=>{
+      const v = fila.canales[c.key] || 0;
+      ingresosFila += v; totalesCanal[ci] += v;
+      return `<td>${v}</td>`;
+    }).join('');
+    totalSinCanal += fila.sinCanal;
+    totalSalidas += fila.salidas;
+    const diff = ingresosFila - fila.salidas;
+    totalGeneral += diff;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="ci-td-cliente">${escapeHtml(p.label)}</td>${celdasCanal}<td>${fila.sinCanal}</td><td>${fila.salidas}</td><td class="ci-td-total">${diff}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tfoot = table.querySelector('tfoot');
+  const celdasTotalCanal = totalesCanal.map(v=> `<td>${v}</td>`).join('');
+  tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotalCanal}<td>${totalSinCanal}</td><td>${totalSalidas}</td><td>${totalGeneral}</td></tr>`;
+  cont.appendChild(table);
+}
+
+/* Días del mes correspondiente a una llave "AAAA-MM". */
+function diasDelMes(mesKey){
+  const [y, m] = mesKey.split('-').map(Number);
+  const ultimoDia = new Date(y, m, 0).getDate();
+  const dias = [];
+  for(let d = 1; d <= ultimoDia; d++){
+    const iso = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    dias.push({ key: iso, label: String(d).padStart(2,'0') });
+  }
+  return dias;
+}
+
+let opsDiaMesSeleccionado = null; // 'AAAA-MM'; null = usa el mes actual por defecto
+function renderOpsDiaMesChips(){
+  const cont = document.getElementById('ioDiaMesChips');
+  if(!cont) return;
+  const meses = getVentana6Meses();
+  if(!opsDiaMesSeleccionado) opsDiaMesSeleccionado = meses[meses.length-1].key;
+  cont.innerHTML = '';
+  meses.forEach(m=>{
+    const chip = document.createElement('div');
+    chip.className = 'month-chip' + (opsDiaMesSeleccionado === m.key ? ' active' : '');
+    chip.textContent = m.label;
+    chip.addEventListener('click', ()=>{ opsDiaMesSeleccionado = m.key; renderOperacionesIngresosSalidas(); });
+    cont.appendChild(chip);
+  });
+}
+
+function renderOperacionesIngresosSalidas(){
+  const contMes = document.getElementById('ioPorMes');
+  if(!contMes) return; // la vista Operaciones aún no está en el DOM
+  const meses = getVentana6Meses();
+  const dataMes = calcularIngresosSalidas(meses, iso=>iso.slice(0,7), iso=>iso.slice(0,7));
+  renderTablaIngresosSalidas('ioPorMes', meses, dataMes, 'Mes');
+
+  renderOpsDiaMesChips();
+  const dias = diasDelMes(opsDiaMesSeleccionado);
+  const dataDia = calcularIngresosSalidas(dias, iso=>iso, iso=>iso);
+  renderTablaIngresosSalidas('ioPorDia', dias, dataDia, 'Día');
+}
+
+/* Productividad: Gestiones (por Abogado de Apoyo, columna M) y
+   Revisiones (por el abogado resuelto desde Abogado Revisión, columna
+   N, cruzado contra LISTAS!R:T), ambas contadas según el mes de la
+   FECHA RESPUESTA (columna R). */
+function calcularProductividad(){
+  const meses = getVentana6Meses();
+  const idxByKey = new Map(meses.map((m,i)=>[m.key, i]));
+  const abogados = new Map(); // nombre -> [{gestiones,revisiones} x 6]
+  const asegurar = (nombre)=>{
+    if(!abogados.has(nombre)) abogados.set(nombre, meses.map(()=>({gestiones:0, revisiones:0})));
+    return abogados.get(nombre);
+  };
+  currentData.forEach(r=>{
+    if(!r.fr) return;
+    const idx = idxByKey.get(r.fr.slice(0,7));
+    if(idx === undefined) return;
+    const apoyo = norm(r.aa);
+    if(apoyo) asegurar(apoyo)[idx].gestiones++;
+    const tagRevision = norm(r.r);
+    if(tagRevision){
+      const nombreRev = reviewerNameByTag[tagRevision.toLowerCase()] || tagRevision;
+      asegurar(nombreRev)[idx].revisiones++;
+    }
+  });
+  return { meses, abogados };
+}
+
+function renderProductividad(){
+  const cont = document.getElementById('productividadTabla');
+  if(!cont) return;
+  const { meses, abogados } = calcularProductividad();
+  const nombres = Array.from(abogados.keys()).sort((a,b)=> a.localeCompare(b,'es'));
+  cont.innerHTML = '';
+  if(nombres.length === 0){
+    cont.innerHTML = '<div class="empty-msg">Sin datos.</div>';
+    return;
+  }
+  const table = document.createElement('table');
+  table.className = 'ci-matrix';
+  const filaMeses = `<tr>
+      <th class="ci-th-cliente" rowspan="2">Abogado</th>
+      ${meses.map(m=> `<th colspan="2">${escapeHtml(m.label)}</th>`).join('')}
+      <th class="ci-th-total" rowspan="2">Total</th>
+    </tr>
+    <tr>${meses.map(()=> '<th>Gestiones</th><th>Revisiones</th>').join('')}</tr>`;
+  table.innerHTML = `<thead>${filaMeses}</thead><tbody></tbody><tfoot></tfoot>`;
+  const tbody = table.querySelector('tbody');
+  const totalesPorMes = meses.map(()=>({gestiones:0, revisiones:0}));
+  let granTotal = 0;
+  nombres.forEach(nombre=>{
+    const datos = abogados.get(nombre);
+    let totalAbogado = 0;
+    const celdas = datos.map((d, idx)=>{
+      totalesPorMes[idx].gestiones += d.gestiones;
+      totalesPorMes[idx].revisiones += d.revisiones;
+      totalAbogado += d.gestiones + d.revisiones;
+      return `<td>${d.gestiones}</td><td>${d.revisiones}</td>`;
+    }).join('');
+    granTotal += totalAbogado;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="ci-td-cliente">${escapeHtml(nombre)}</td>${celdas}<td class="ci-td-total">${totalAbogado}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tfoot = table.querySelector('tfoot');
+  const celdasTotal = totalesPorMes.map(t=> `<td>${t.gestiones}</td><td>${t.revisiones}</td>`).join('');
+  tfoot.innerHTML = `<tr><td class="ci-td-cliente">Total</td>${celdasTotal}<td>${granTotal}</td></tr>`;
+  cont.appendChild(table);
 }
 
 function renderBarList(container, entries, filterKey){
@@ -2535,6 +3020,8 @@ if(tabVisitas) tabVisitas.addEventListener('click', ()=> activarPestana('visitas
 const HEADER_MAP = {
   fecha: ['FECHA'],
   fechaCompromiso: ['FECHA DE COMPROMISO INTERNO'],
+  fechaRespuesta: ['FECHA RESPUESTA'],
+  canal: ['CANAL DE INGRESO DE LA TAREA','CANAL DE INGRESO'],
   cliente: ['CLIENTE'],
   tipoTarea: ['TIPO DE TAREA'],
   fidelizador: ['ABOGADO FIDELIZADOR'],
@@ -2647,6 +3134,8 @@ function parseWorkbook(arrayBuffer){
   const headers = Object.keys(rows[0]);
   const kFecha = findKey(headers, HEADER_MAP.fecha);
   const kComp = findKey(headers, HEADER_MAP.fechaCompromiso);
+  const kResp = findKey(headers, HEADER_MAP.fechaRespuesta);
+  const kCanal = findKey(headers, HEADER_MAP.canal);
   const kCliente = findKey(headers, HEADER_MAP.cliente);
   const kTipo = findKey(headers, HEADER_MAP.tipoTarea);
   const kFid = findKey(headers, HEADER_MAP.fidelizador);
@@ -2684,6 +3173,8 @@ function parseWorkbook(arrayBuffer){
     out.push({
       f: excelDateToISO(row[kFecha]),
       fc: excelDateToISO(row[kComp]),
+      fr: kResp ? excelDateToISO(row[kResp]) : null,
+      can: kCanal ? norm(row[kCanal]) : '',
       c: cliente,
       t: tipo,
       af: norm(row[kFid]),
@@ -2727,6 +3218,7 @@ function procesarArrayBuffer(arrayBuffer){
     gerApoyoFilter = null;
     gerFidelizadorFilter = null;
     gerReunionSubFilter = null;
+    opsDiaMesSeleccionado = null; // recalcula el mes actual con la fecha de hoy
     rebuildAllFilterOptions();
     render();
     buildAgendaIndex();
@@ -2736,7 +3228,7 @@ function procesarArrayBuffer(arrayBuffer){
     visitasFilters.apoyo.clear();
     visitasCategoriaFilter = null;
     visitasSubFilter = null;
-    ciMatrixFilters = { comite: [null,null,null,null,null,null], reunion: [null,null,null,null,null,null] };
+    resetCiMatrixState();
     visitasMesInicializado = false; // recalcula el mes en curso/anterior con la fecha de hoy
     renderVisitas();
     setLastUpdated(new Date());
