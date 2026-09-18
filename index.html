@@ -267,7 +267,7 @@
   .ci-matrix thead th.ci-th-fila1{ height:36px; }
   .ci-matrix thead th.ci-th-fila2{ top:36px; }
   .ci-matrix thead th.ci-th-unica{ top:0; }
-  .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:270px; top:0;}
+  .ci-matrix thead th.ci-th-cliente{text-align:left; min-width:270px; top:0; left:0; z-index:3; box-shadow:2px 0 4px -2px rgba(0,0,0,.35);}
   .ci-matrix thead th.ci-th-cliente > div:first-child{margin-bottom:5px; font-weight:700;}
   .ci-cliente-search{
     width:100%; box-sizing:border-box; padding:5px 8px; border-radius:6px;
@@ -287,17 +287,25 @@
   .ci-th-simple .ci-sort-btn{font-size:.75rem;}
   .ci-matrix thead th.ci-th-cliente .ci-th-simple{justify-content:flex-start;}
   .ci-matrix tbody td{padding:6px 8px; border-top:1px solid var(--borde); text-align:center;}
+  /* Columna "Cliente"/"Abogado" fija al desplazar horizontalmente:
+     necesita posición y fondo propios (opacos) para tapar el contenido
+     que se desliza debajo mientras se hace scroll. */
   .ci-matrix tbody td.ci-td-cliente{
     text-align:left; font-size:.92rem; white-space:nowrap;
+    position:sticky; left:0; z-index:1; background:var(--card);
+    box-shadow:2px 0 4px -2px rgba(0,0,0,.15);
   }
   .ci-matrix tbody td.ci-td-total{font-weight:800; background:#f7f7f4;}
   .ci-matrix tbody tr:nth-child(even){background:#fbfbfb;}
+  .ci-matrix tbody tr:nth-child(even) td.ci-td-cliente{background:#fbfbfb;}
   .ci-matrix tbody tr.clickable{cursor:pointer;}
   .ci-matrix tbody tr.clickable:hover{background:#f4f6e6;}
+  .ci-matrix tbody tr.clickable:hover td.ci-td-cliente{background:#f4f6e6;}
   .ci-matrix tbody tr.active{background:#eef3cf; box-shadow:inset 0 0 0 1px var(--oliva);}
+  .ci-matrix tbody tr.active td.ci-td-cliente{background:#eef3cf;}
   .ci-matrix tbody tr.active .ci-td-cliente{font-weight:700; color:#4a5210;}
   .ci-matrix tfoot td{padding:7px 8px; border-top:2px solid var(--gris); font-weight:800; text-align:center; background:#f0f0ee;}
-  .ci-matrix tfoot td.ci-td-cliente{text-align:left;}
+  .ci-matrix tfoot td.ci-td-cliente{text-align:left; position:sticky; left:0; z-index:1; background:#f0f0ee;}
   .ci-badge{
     display:inline-block; min-width:44px; padding:4px 8px; border-radius:999px;
     font-size:.72rem; font-weight:700; color:#fff;
@@ -341,6 +349,13 @@
     font-weight:700; color:var(--texto); font-size:.78rem; white-space:nowrap;
     pointer-events:none;
   }
+  /* Variante usada solo en "Visitas por abogado de apoyo": la cifra va
+     fija justo después del nombre, antes de que empiece la barra (en
+     vez de perseguir el final de la barra), para que nunca quede
+     sobrepuesta con barras muy largas. */
+  .bar-row .bval-inicio{
+    flex:0 0 30px; text-align:right; font-weight:700; color:var(--texto); font-size:.82rem;
+  }
   .empty-msg{color:var(--gris); font-size:.85rem; padding:10px 0;}
   .scroll-panel{max-height:340px; overflow-y:auto; padding-right:34px;}
 
@@ -355,6 +370,13 @@
   .card-ger.active{box-shadow:inset 0 0 0 2px var(--oliva); background:#f4f6e6;}
   .card-ger .num{font-size:1.9rem; font-weight:800; color:var(--texto); line-height:1.1;}
   .card-ger .lbl{margin-top:6px; font-size:.74rem; letter-spacing:.5px; text-transform:uppercase; color:var(--gris); font-weight:700;}
+  .card-ger .lbl-dinamico{margin-top:8px;}
+  .card-ger .lbl-dinamico select{
+    width:100%; text-align:center; text-align-last:center; padding:6px 8px; border-radius:8px;
+    border:1px solid var(--borde); background:#fff; color:var(--texto); font-weight:700;
+    font-size:.78rem; letter-spacing:.3px; text-transform:uppercase; cursor:pointer;
+  }
+  .card-ger .lbl-dinamico select:focus{outline:2px solid var(--oliva); outline-offset:1px;}
   /* Desglose pequeño debajo del cuadro "Reuniones": Reuniones, Audiencias,
      Capacitación y Comités. También son filtros (clic). */
   .cards-ger-sub{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px;}
@@ -838,9 +860,29 @@
               </div>
             </div>
           </div>
-          <div class="card-ger" id="gerBoxPoliticas" title="Clic para filtrar por políticas">
-            <div class="num" id="gerPoliticas">0</div>
-            <div class="lbl">Políticas</div>
+          <div>
+            <div class="card-ger" id="gerBoxPoliticas" title="Clic para filtrar por este tipo">
+              <div class="num" id="gerPoliticas">0</div>
+              <div class="lbl-dinamico">
+                <select id="gerTipoDinamicoSelect" title="Elige qué tipo de tarea se saca de Total Tareas y se muestra aquí">
+                  <option value="">— Sin selección —</option>
+                </select>
+              </div>
+            </div>
+            <div class="cards-ger-sub">
+              <div class="card-ger-sub" id="gerBoxDinVencidas" title="Clic para filtrar por Vencidas de este tipo">
+                <div class="num-sm" id="gerDinVencidas">0</div>
+                <div class="lbl-sm">Vencidas</div>
+              </div>
+              <div class="card-ger-sub" id="gerBoxDinPendientes" title="Clic para filtrar por Pendiente de este tipo">
+                <div class="num-sm" id="gerDinPendientes">0</div>
+                <div class="lbl-sm">Pendiente</div>
+              </div>
+              <div class="card-ger-sub" id="gerBoxDinSuspendidas" title="Clic para filtrar por Suspendidas de este tipo">
+                <div class="num-sm" id="gerDinSuspendidas">0</div>
+                <div class="lbl-sm">Suspendidas</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -865,7 +907,7 @@
           <span><span class="sw sw-pend"></span>Pendiente</span>
           <span><span class="sw sw-susp"></span>Suspendidas</span>
           <span><span class="sw sw-reun"></span>Reuniones</span>
-          <span><span class="sw sw-pol"></span>Políticas</span>
+          <span><span class="sw sw-pol"></span><span id="gerLegendDinApoyo">Políticas</span></span>
         </div>
         <div class="scroll-panel" id="resumenApoyo"></div>
       </div>
@@ -881,7 +923,7 @@
           <span><span class="sw sw-pend"></span>Pendiente</span>
           <span><span class="sw sw-susp"></span>Suspendidas</span>
           <span><span class="sw sw-reun"></span>Reuniones</span>
-          <span><span class="sw sw-pol"></span>Políticas</span>
+          <span><span class="sw sw-pol"></span><span id="gerLegendDinFidelizador">Políticas</span></span>
         </div>
         <div class="scroll-panel" id="resumenFidelizador"></div>
       </div>
@@ -947,6 +989,20 @@
           <span id="lblVApoyo">Todos</span><span class="chev">▾</span>
         </button>
         <div class="ms-panel" id="panelVApoyo">
+          <input class="ms-search" placeholder="Buscar abogado...">
+          <div class="ms-options"></div>
+          <div class="ms-actions">
+            <button data-action="all">Seleccionar todos</button>
+            <button data-action="none">Limpiar</button>
+          </div>
+        </div>
+      </div>
+      <div class="filter-field" id="wrapVFidelizador" title="Filtra por el abogado fidelizador de la tarea más reciente de cada cliente. Aplica solo a Comité Clientes y Visitas Clientes (no se muestra en la tabla).">
+        <label>Abogado Fidelizador</label>
+        <button class="ms-btn" id="btnVFidelizador" type="button">
+          <span id="lblVFidelizador">Todos</span><span class="chev">▾</span>
+        </button>
+        <div class="ms-panel" id="panelVFidelizador">
           <input class="ms-search" placeholder="Buscar abogado...">
           <div class="ms-options"></div>
           <div class="ms-actions">
@@ -1079,6 +1135,30 @@ let activeData = [];    // solo tareas activas (GESTIÓN != GESTIONADO), la usan
 let reviewerMap = {};         // { "nombre abogado" en minúsculas -> "R - Tag" } construido desde LISTAS!R:T
 let reviewerNameByTag = {};   // { "r - tag" en minúsculas -> "Nombre Completo" } (mapa inverso, para mostrar nombres)
 let clientesActivos = new Map(); // "nombre en minúsculas" -> "nombre original", con ESTADO = "ACTIVO" en LISTAS!N:Q
+let clienteFidelizadorActual = new Map(); // "cliente en minúsculas" -> nombre del abogado fidelizador de su tarea más reciente
+/* Para cada cliente, mira TODAS sus tareas (cualquier tipo, incluidas
+   gestionadas) y se queda con el Abogado Fidelizador de la más
+   reciente (columna FECHA, con FECHA DE COMPROMISO INTERNO como
+   respaldo si la primera está vacía). Sirve para el filtro de
+   "Abogado Fidelizador" de Comité Clientes / Visitas Clientes: se
+   filtra por cliente, no por tarea. */
+function computeClienteFidelizadorActual(){
+  const ultima = new Map(); // clienteLower -> {fecha, fidelizador}
+  currentData.forEach(r=>{
+    const cliente = norm(r.c);
+    if(!cliente) return;
+    const fecha = r.f || r.fc || '';
+    if(!fecha) return;
+    const key = cliente.toLowerCase();
+    const actual = ultima.get(key);
+    if(!actual || fecha > actual.fecha){
+      ultima.set(key, { fecha, fidelizador: norm(r.af) });
+    }
+  });
+  const out = new Map();
+  ultima.forEach((v,k)=>{ if(v.fidelizador) out.set(k, v.fidelizador); });
+  return out;
+}
 let agendaApoyo = '';      // abogado de apoyo seleccionado en la Agenda (mismo valor que columna M)
 let agendaIndex = null;    // índices precomputados para evitar recorrer todo el dataset en cada render
 
@@ -1161,11 +1241,53 @@ function uniqueSorted(arr){
 /* ---------- Operaciones: tipos de tarea especiales ----------
    Columna Q (TIPO DE TAREA) de 'TAREAS 2026'. Estos tipos se excluyen
    del cuadro resumen principal y se muestran en sus propios cuadros,
-   para que Total-principal + Reuniones + Políticas = Total general. */
+   para que Total-principal + Reuniones + Tipo dinámico = Total general. */
 const REUNION_TIPOS = new Set(['REUNIÓN','REUNION','AUDIENCIA','CAPACITACIÓN','CAPACITACION','COMITÉ DE CONVIVENCIA','COMITE DE CONVIVENCIA','COMITÉ LABORAL','COMITE LABORAL','COMITÉ LABORA','COMITE LABORA']);
-const POLITICA_TIPOS = new Set(['POLÍTICAS','POLITICAS']);
 function esReunionTipo(r){ return REUNION_TIPOS.has((r.t||'').toUpperCase()); }
-function esPoliticaTipo(r){ return POLITICA_TIPOS.has((r.t||'').toUpperCase()); }
+
+/* Cuadro dinámico de Operaciones (el que antes decía siempre
+   "Políticas"): el usuario elige, con el selector de la tarjeta, CUÁL
+   tipo de tarea (columna Q) se saca de "Total Tareas" y se muestra
+   desglosado por estado en este cuadro. Por defecto arranca en
+   "Políticas" para que el tablero se vea igual que antes al cargar un
+   archivo nuevo. Si no hay ningún tipo seleccionado, no se excluye
+   nada: esas tareas vuelven a sumar dentro de Total Tareas. */
+let gerTipoDinamico = 'POLÍTICAS'; // valor en MAYÚSCULA de TIPO DE TAREA, o '' si no hay selección
+function esTipoDinamico(r){ return !!gerTipoDinamico && (r.t||'').toUpperCase() === gerTipoDinamico; }
+/* Lista de tipos de tarea elegibles para el cuadro dinámico: todos los
+   que aparecen en los datos, EXCLUYENDO los que ya pertenecen a la
+   familia fija de Reuniones (esos siempre se restan aparte y no
+   pueden volver a elegirse aquí, para no dejar el cuadro en 0 por
+   error). */
+function getTiposDinamicosDisponibles(){
+  const set = new Set();
+  activeData.forEach(r=>{
+    const t = (r.t||'').toUpperCase();
+    if(!t) return;
+    if(REUNION_TIPOS.has(t)) return;
+    set.add(t);
+  });
+  return Array.from(set).sort((a,b)=> a.localeCompare(b,'es'));
+}
+function rebuildGerTipoDinamicoOptions(){
+  const sel = document.getElementById('gerTipoDinamicoSelect');
+  if(!sel) return;
+  const tipos = getTiposDinamicosDisponibles();
+  // Si el tipo actualmente elegido ya no existe en los datos cargados,
+  // se conserva igual la selección (por si el usuario vuelve a cargar
+  // un archivo similar más adelante); solo se agrega a la lista si
+  // falta, para no perder la selección silenciosamente.
+  if(gerTipoDinamico && !tipos.includes(gerTipoDinamico)) tipos.push(gerTipoDinamico);
+  sel.innerHTML = '<option value="">— Sin selección —</option>' +
+    tipos.map(t=> `<option value="${escapeHtml(t)}"${t===gerTipoDinamico?' selected':''}>${escapeHtml(t)}</option>`).join('');
+}
+function actualizarLeyendaTipoDinamico(){
+  const texto = gerTipoDinamico || '(Sin selección)';
+  const a = document.getElementById('gerLegendDinApoyo');
+  const b = document.getElementById('gerLegendDinFidelizador');
+  if(a) a.textContent = texto;
+  if(b) b.textContent = texto;
+}
 
 /* Desglose interno de la familia "Reuniones": a qué subcategoría
    pertenece cada tarea (para los 4 cuadros pequeños de Operaciones). */
@@ -1230,7 +1352,7 @@ function getVentana6Meses(){
   return meses;
 }
 
-let visitasFilters = { cliente: new Set(), apoyo: new Set(), mes: new Set() };
+let visitasFilters = { cliente: new Set(), apoyo: new Set(), fidelizador: new Set(), mes: new Set() };
 let visitasMesInicializado = false;
 let visitasCategoriaFilter = null; // null | 'REUNION' | 'COMITE' — cuadros de arriba, funcionan como filtro
 let visitasSubFilter = null; // null | 'REUNION' | 'CAPACITACION' | 'COMITE_LABORAL' | 'CONVIVENCIA'
@@ -1290,6 +1412,9 @@ function getFilteredVisitas(){
   return aplicarFiltrosVisitas(getVisitasBasePool());
 }
 function getVisitasOptionsFor(key){
+  if(key === 'fidelizador'){
+    return uniqueSorted(Array.from(clienteFidelizadorActual.values()));
+  }
   let base = getVisitasBasePool();
   if(key !== 'cliente' && visitasFilters.cliente.size) base = base.filter(r=> visitasFilters.cliente.has(norm(r.c).toLowerCase()));
   if(key !== 'apoyo' && visitasFilters.apoyo.size) base = base.filter(r=> visitasFilters.apoyo.has(norm(r.aa).toLowerCase()));
@@ -1356,8 +1481,9 @@ if(_visBoxSubComiteLaboral) _visBoxSubComiteLaboral.addEventListener('click', (e
 const _visBoxSubConvivencia = document.getElementById('visBoxSubConvivencia');
 if(_visBoxSubConvivencia) _visBoxSubConvivencia.addEventListener('click', (e)=>{ e.stopPropagation(); toggleVisitaSubFiltro('COMITE','CONVIVENCIA'); });
 
+const VISITAS_FILTRO_CAPKEY = { cliente:'VCliente', apoyo:'VApoyo', fidelizador:'VFidelizador' };
 function renderVisitasMultiSelectOptions(key){
-  const capKey = key === 'cliente' ? 'VCliente' : 'VApoyo';
+  const capKey = VISITAS_FILTRO_CAPKEY[key];
   const panel = document.getElementById('panel'+capKey);
   if(!panel) return;
   const optsContainer = panel.querySelector('.ms-options');
@@ -1401,12 +1527,13 @@ function renderVisitasMultiSelectOptions(key){
 function rebuildVisitasFilterOptions(){
   renderVisitasMultiSelectOptions('cliente');
   renderVisitasMultiSelectOptions('apoyo');
+  renderVisitasMultiSelectOptions('fidelizador');
 }
 function onVisitasFiltersChanged(){
   renderVisitas();
 }
 function setupVisitasMultiSelect(key){
-  const capKey = key === 'cliente' ? 'VCliente' : 'VApoyo';
+  const capKey = VISITAS_FILTRO_CAPKEY[key];
   const btn = document.getElementById('btn'+capKey);
   const panel = document.getElementById('panel'+capKey);
   if(!btn || !panel) return;
@@ -1428,10 +1555,12 @@ function setupVisitasMultiSelect(key){
 }
 setupVisitasMultiSelect('cliente');
 setupVisitasMultiSelect('apoyo');
+setupVisitasMultiSelect('fidelizador');
 const _btnResetVisitas = document.getElementById('btnResetVisitas');
 if(_btnResetVisitas) _btnResetVisitas.addEventListener('click', ()=>{
   visitasFilters.cliente.clear();
   visitasFilters.apoyo.clear();
+  visitasFilters.fidelizador.clear();
   visitasCategoriaFilter = null;
   visitasSubFilter = null;
   resetCiMatrixState();
@@ -1495,14 +1624,17 @@ function renderVisitasGrupo(rows, campo, contenedorId, tipoFiltro){
     row.className = 'bar-row clickable' + (isActive ? ' active' : '');
     row.title = `Clic para filtrar por: ${e.name} — Reunión: ${e.reunion} · Comité: ${e.comite}`;
     const pctTotal = Math.round((e.total/max)*100);
+    // La etiqueta de valor va al INICIO (después del nombre, antes de
+    // la barra) solo en esta gráfica, para que no quede sobrepuesta al
+    // final de barras muy largas.
     row.innerHTML = `
       <div class="bname" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</div>
+      <div class="bval-inicio">${e.total}</div>
       <div class="btrack">
         <div class="bfill-stack" style="width:${pctTotal}%">
           <div class="seg-vis-reunion" style="flex:${e.reunion||0}" title="Reunión: ${e.reunion}"></div>
           <div class="seg-vis-comite" style="flex:${e.comite||0}" title="Comité: ${e.comite}"></div>
         </div>
-        <div class="bval" style="left:${Math.min(pctTotal,90)}%">${e.total}</div>
       </div>`;
     row.addEventListener('click', ()=> tipoFiltro === 'apoyo' ? toggleVisitaApoyo(e.name) : toggleVisitaCliente(e.name));
     container.appendChild(row);
@@ -1673,6 +1805,15 @@ function renderMatrizVisitas(tipo, rowsPool, contenedorId){
         .map(r=> norm(r.c).toLowerCase())
     );
     rosterNames = rosterNames.filter(n=> clientesDelAbogado.has(n.toLowerCase()));
+  }
+  // Filtro por Abogado Fidelizador "actual" del cliente (el de su tarea
+  // más reciente, no el de cada tarea individual). Solo aplica a estas
+  // dos matrices; no se muestra en la tabla, solo filtra.
+  if(visitasFilters.fidelizador.size){
+    rosterNames = rosterNames.filter(n=>{
+      const fid = clienteFidelizadorActual.get(n.toLowerCase());
+      return fid && visitasFilters.fidelizador.has(fid.toLowerCase());
+    });
   }
   const rosterLower = new Map(rosterNames.map(n=>[n.toLowerCase(), n]));
 
@@ -2090,6 +2231,7 @@ let gerEstadoFilter = null;
 let gerApoyoFilter = null;
 let gerFidelizadorFilter = null;
 let gerReunionSubFilter = null;
+let gerTipoDinamicoSubFilter = null; // 'VENCIDA' | 'PENDIENTE' | 'SUSPENDIDA POR CLIENTE' | null
 
 /* Excluye SUBTAREA ABIERTA (igual criterio que el Total del Dashboard)
    y aplica los filtros propios de esta vista sobre un conjunto de filas. */
@@ -2098,15 +2240,18 @@ function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true, usarFidelizad
     const e = (r.e||'').toUpperCase();
     if(e === 'SUBTAREA ABIERTA') return false;
     const isReun = esReunionTipo(r);
-    const isPol = esPoliticaTipo(r);
+    const isDin = esTipoDinamico(r);
     if(usarEstado && gerEstadoFilter){
       if(gerEstadoFilter === 'REUNION'){
         if(!isReun) return false;
         if(gerReunionSubFilter && subTipoReunion(r) !== gerReunionSubFilter) return false;
       }
-      else if(gerEstadoFilter === 'POLITICA'){ if(!isPol) return false; }
+      else if(gerEstadoFilter === 'TIPO_DINAMICO'){
+        if(!isDin) return false;
+        if(gerTipoDinamicoSubFilter && e !== gerTipoDinamicoSubFilter) return false;
+      }
       else {
-        if(isReun || isPol) return false;
+        if(isReun || isDin) return false;
         if(e !== gerEstadoFilter) return false;
       }
     }
@@ -2123,6 +2268,7 @@ function aplicarFiltrosGer(rows, {usarEstado=true, usarApoyo=true, usarFidelizad
 function toggleGerEstado(valor){
   gerEstadoFilter = (gerEstadoFilter === valor) ? null : valor;
   gerReunionSubFilter = null; // cambiar de categoría principal limpia el desglose fino
+  gerTipoDinamicoSubFilter = null;
   render();
 }
 /* Los 4 cuadros pequeños (Reuniones/Audiencias/Capacitación/Comités):
@@ -2133,6 +2279,15 @@ function toggleGerReunionSub(valor){
   } else {
     gerEstadoFilter = 'REUNION';
     gerReunionSubFilter = valor;
+  }
+  render();
+}
+function toggleGerTipoDinamicoSub(valor){
+  if(gerEstadoFilter === 'TIPO_DINAMICO' && gerTipoDinamicoSubFilter === valor){
+    gerTipoDinamicoSubFilter = null; // clic de nuevo sobre el mismo = lo quita
+  } else {
+    gerEstadoFilter = 'TIPO_DINAMICO';
+    gerTipoDinamicoSubFilter = valor;
   }
   render();
 }
@@ -2153,8 +2308,9 @@ function renderGerencial(filtered){
   // (estado, abogado de apoyo Y abogado fidelizador seleccionados).
   const paraCuadros = aplicarFiltrosGer(filtered);
 
-  let vVenc=0, vPend=0, vSusp=0, vReun=0, vPol=0;
+  let vVenc=0, vPend=0, vSusp=0, vReun=0;
   let vSubReun=0, vSubAud=0, vSubCap=0, vSubCom=0;
+  let vDinVenc=0, vDinPend=0, vDinSusp=0;
   paraCuadros.forEach(r=>{
     if(esReunionTipo(r)){
       vReun++;
@@ -2165,25 +2321,35 @@ function renderGerencial(filtered){
       else if(sub === 'COMITES') vSubCom++;
       return;
     }
-    if(esPoliticaTipo(r)){ vPol++; return; }
     const e = (r.e||'').toUpperCase();
+    if(esTipoDinamico(r)){
+      if(e === 'VENCIDA') vDinVenc++;
+      else if(e === 'PENDIENTE') vDinPend++;
+      else if(e === 'SUSPENDIDA POR CLIENTE') vDinSusp++;
+      return;
+    }
     if(e === 'VENCIDA') vVenc++;
     else if(e === 'PENDIENTE') vPend++;
     else if(e === 'SUSPENDIDA POR CLIENTE') vSusp++;
   });
 
+  const vDinTotal = vDinVenc + vDinPend + vDinSusp;
   const totalPrincipal = vVenc + vPend + vSusp;
   document.getElementById('gerTotal').textContent = totalPrincipal;
   document.getElementById('gerVencidas').textContent = vVenc;
   document.getElementById('gerPendientes').textContent = vPend;
   document.getElementById('gerSuspendidas').textContent = vSusp;
   document.getElementById('gerReuniones').textContent = vReun;
-  document.getElementById('gerPoliticas').textContent = vPol;
-  document.getElementById('gerTotalGeneral').textContent = totalPrincipal + vReun + vPol;
+  document.getElementById('gerPoliticas').textContent = vDinTotal;
+  document.getElementById('gerTotalGeneral').textContent = totalPrincipal + vReun + vDinTotal;
   document.getElementById('gerSubReuniones').textContent = vSubReun;
   document.getElementById('gerSubAudiencias').textContent = vSubAud;
   document.getElementById('gerSubCapacitacion').textContent = vSubCap;
   document.getElementById('gerSubComites').textContent = vSubCom;
+  document.getElementById('gerDinVencidas').textContent = vDinVenc;
+  document.getElementById('gerDinPendientes').textContent = vDinPend;
+  document.getElementById('gerDinSuspendidas').textContent = vDinSusp;
+  actualizarLeyendaTipoDinamico();
 
   // Resaltar el cuadro activo (o ninguno si no hay filtro de estado)
   const boxTotalGeneral = document.getElementById('gerBoxTotalGeneral');
@@ -2199,7 +2365,7 @@ function renderGerencial(filtered){
   if(boxPend) boxPend.classList.toggle('active', gerEstadoFilter === 'PENDIENTE');
   if(boxSusp) boxSusp.classList.toggle('active', gerEstadoFilter === 'SUSPENDIDA POR CLIENTE');
   if(boxReun) boxReun.classList.toggle('active', gerEstadoFilter === 'REUNION' && !gerReunionSubFilter);
-  if(boxPol) boxPol.classList.toggle('active', gerEstadoFilter === 'POLITICA');
+  if(boxPol) boxPol.classList.toggle('active', gerEstadoFilter === 'TIPO_DINAMICO' && !gerTipoDinamicoSubFilter);
   const boxSubReun = document.getElementById('gerBoxSubReuniones');
   const boxSubAud = document.getElementById('gerBoxSubAudiencias');
   const boxSubCap = document.getElementById('gerBoxSubCapacitacion');
@@ -2209,6 +2375,13 @@ function renderGerencial(filtered){
   if(boxSubAud) boxSubAud.classList.toggle('active', reunActiva && gerReunionSubFilter === 'AUDIENCIAS');
   if(boxSubCap) boxSubCap.classList.toggle('active', reunActiva && gerReunionSubFilter === 'CAPACITACION');
   if(boxSubCom) boxSubCom.classList.toggle('active', reunActiva && gerReunionSubFilter === 'COMITES');
+  const boxDinVenc = document.getElementById('gerBoxDinVencidas');
+  const boxDinPend = document.getElementById('gerBoxDinPendientes');
+  const boxDinSusp = document.getElementById('gerBoxDinSuspendidas');
+  const dinActiva = gerEstadoFilter === 'TIPO_DINAMICO';
+  if(boxDinVenc) boxDinVenc.classList.toggle('active', dinActiva && gerTipoDinamicoSubFilter === 'VENCIDA');
+  if(boxDinPend) boxDinPend.classList.toggle('active', dinActiva && gerTipoDinamicoSubFilter === 'PENDIENTE');
+  if(boxDinSusp) boxDinSusp.classList.toggle('active', dinActiva && gerTipoDinamicoSubFilter === 'SUSPENDIDA POR CLIENTE');
 
   // Indicador de abogado de apoyo / fidelizador seleccionado
   const elActivo = document.getElementById('gerApoyoActivo');
@@ -2254,13 +2427,14 @@ if(_btnQuitarFidelizadorGer) _btnQuitarFidelizadorGer.addEventListener('click', 
   render();
 });
 const _gerBoxTotal = document.getElementById('gerBoxTotal');
-if(_gerBoxTotal) _gerBoxTotal.addEventListener('click', ()=>{ gerEstadoFilter = null; gerReunionSubFilter = null; render(); });
+if(_gerBoxTotal) _gerBoxTotal.addEventListener('click', ()=>{ gerEstadoFilter = null; gerReunionSubFilter = null; gerTipoDinamicoSubFilter = null; render(); });
 const _gerBoxTotalGeneral = document.getElementById('gerBoxTotalGeneral');
 if(_gerBoxTotalGeneral) _gerBoxTotalGeneral.addEventListener('click', ()=>{
   // Representa el total de TODO: al hacer clic limpia cualquier filtro
   // propio de esta hoja (estado, abogado de apoyo y fidelizador).
   gerEstadoFilter = null;
   gerReunionSubFilter = null;
+  gerTipoDinamicoSubFilter = null;
   gerApoyoFilter = null;
   gerFidelizadorFilter = null;
   render();
@@ -2274,7 +2448,10 @@ if(_gerBoxSuspendidas) _gerBoxSuspendidas.addEventListener('click', ()=> toggleG
 const _gerBoxReuniones = document.getElementById('gerBoxReuniones');
 if(_gerBoxReuniones) _gerBoxReuniones.addEventListener('click', ()=> toggleGerEstado('REUNION'));
 const _gerBoxPoliticas = document.getElementById('gerBoxPoliticas');
-if(_gerBoxPoliticas) _gerBoxPoliticas.addEventListener('click', ()=> toggleGerEstado('POLITICA'));
+if(_gerBoxPoliticas) _gerBoxPoliticas.addEventListener('click', (e)=>{
+  if(e.target && e.target.id === 'gerTipoDinamicoSelect') return; // clic en el selector, no filtra
+  toggleGerEstado('TIPO_DINAMICO');
+});
 const _gerBoxSubReuniones = document.getElementById('gerBoxSubReuniones');
 if(_gerBoxSubReuniones) _gerBoxSubReuniones.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerReunionSub('REUNIONES'); });
 const _gerBoxSubAudiencias = document.getElementById('gerBoxSubAudiencias');
@@ -2283,6 +2460,20 @@ const _gerBoxSubCapacitacion = document.getElementById('gerBoxSubCapacitacion');
 if(_gerBoxSubCapacitacion) _gerBoxSubCapacitacion.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerReunionSub('CAPACITACION'); });
 const _gerBoxSubComites = document.getElementById('gerBoxSubComites');
 if(_gerBoxSubComites) _gerBoxSubComites.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerReunionSub('COMITES'); });
+const _gerBoxDinVencidas = document.getElementById('gerBoxDinVencidas');
+if(_gerBoxDinVencidas) _gerBoxDinVencidas.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerTipoDinamicoSub('VENCIDA'); });
+const _gerBoxDinPendientes = document.getElementById('gerBoxDinPendientes');
+if(_gerBoxDinPendientes) _gerBoxDinPendientes.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerTipoDinamicoSub('PENDIENTE'); });
+const _gerBoxDinSuspendidas = document.getElementById('gerBoxDinSuspendidas');
+if(_gerBoxDinSuspendidas) _gerBoxDinSuspendidas.addEventListener('click', (e)=>{ e.stopPropagation(); toggleGerTipoDinamicoSub('SUSPENDIDA POR CLIENTE'); });
+const _gerTipoDinamicoSelect = document.getElementById('gerTipoDinamicoSelect');
+if(_gerTipoDinamicoSelect) _gerTipoDinamicoSelect.addEventListener('click', e=> e.stopPropagation());
+if(_gerTipoDinamicoSelect) _gerTipoDinamicoSelect.addEventListener('change', (e)=>{
+  gerTipoDinamico = e.target.value; // '' = sin selección
+  gerTipoDinamicoSubFilter = null;
+  if(gerEstadoFilter === 'TIPO_DINAMICO' && !gerTipoDinamico) gerEstadoFilter = null;
+  render();
+});
 
 /* Resumen por abogado (de Apoyo o Fidelizador, según 'campo'/'tipoFiltro'),
    como gráfico de barras combinado (apiladas): cada abogado es una barra
@@ -2294,13 +2485,14 @@ function renderResumenAbogado(filtered, campo, contenedorId, tipoFiltro){
   const container = document.getElementById(contenedorId);
   if(!container) return;
 
+  const etiquetaDin = gerTipoDinamico || '(Sin selección)';
   const map = new Map();
   filtered.forEach(r=>{
     const k = norm(r[campo]) || (tipoFiltro === 'apoyo' ? '(Sin abogado de apoyo)' : '(Sin abogado fidelizador)');
     if(!map.has(k)) map.set(k, {venc:0, pend:0, susp:0, reun:0, pol:0});
     const o = map.get(k);
     if(esReunionTipo(r)){ o.reun++; return; }
-    if(esPoliticaTipo(r)){ o.pol++; return; }
+    if(esTipoDinamico(r)){ o.pol++; return; }
     const e = (r.e||'').toUpperCase();
     if(e === 'VENCIDA') o.venc++;
     else if(e === 'PENDIENTE') o.pend++;
@@ -2323,7 +2515,7 @@ function renderResumenAbogado(filtered, campo, contenedorId, tipoFiltro){
     const row = document.createElement('div');
     const isActive = activo && activo.toLowerCase() === e.name.toLowerCase();
     row.className = 'bar-row clickable' + (isActive ? ' active' : '');
-    row.title = `Clic para filtrar por: ${e.name} — Vencidas: ${e.venc} · Pendiente: ${e.pend} · Suspendidas: ${e.susp} · Reuniones: ${e.reun} · Políticas: ${e.pol}`;
+    row.title = `Clic para filtrar por: ${e.name} — Vencidas: ${e.venc} · Pendiente: ${e.pend} · Suspendidas: ${e.susp} · Reuniones: ${e.reun} · ${etiquetaDin}: ${e.pol}`;
     const pctTotal = Math.round((e.total/max)*100);
     row.innerHTML = `
       <div class="bname" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</div>
@@ -2333,7 +2525,7 @@ function renderResumenAbogado(filtered, campo, contenedorId, tipoFiltro){
           <div class="seg-pend" style="flex:${e.pend||0}" title="Pendiente: ${e.pend}"></div>
           <div class="seg-susp" style="flex:${e.susp||0}" title="Suspendidas: ${e.susp}"></div>
           <div class="seg-reun" style="flex:${e.reun||0}" title="Reuniones: ${e.reun}"></div>
-          <div class="seg-pol" style="flex:${e.pol||0}" title="Políticas: ${e.pol}"></div>
+          <div class="seg-pol" style="flex:${e.pol||0}" title="${escapeHtml(etiquetaDin)}: ${e.pol}"></div>
         </div>
         <div class="bval" style="left:${Math.min(pctTotal,90)}%">${e.total}</div>
       </div>`;
@@ -2357,10 +2549,20 @@ function renderGraficoDiario(filtered){
   const cont = document.getElementById('graficoDiario');
   if(!cont) return;
 
+  // Coincidencia robusta (no exacta) para blindar este conteo específico
+  // ante variaciones de espacios/redacción en la columna ESTADO, ya que
+  // una fila de "Subtarea Abierta" que no calce con VENCIDA/PENDIENTE/
+  // SUSPENDIDA queda invisible en los cuadros de arriba, pero SÍ se
+  // sumaba aquí (esta gráfica cuenta por fecha, sin filtrar por estado
+  // específico). Cambio exclusivo de esta gráfica.
+  const esSubtareaAbierta = (estado)=>{
+    const e = (estado||'').toUpperCase().replace(/\s+/g,' ').trim();
+    return e.includes('SUBTAREA') && e.includes('ABIERTA');
+  };
+
   const map = new Map();
   filtered.forEach(r=>{
-    const e = (r.e||'').toUpperCase();
-    if(e === 'SUBTAREA ABIERTA') return;
+    if(esSubtareaAbierta(r.e)) return;
     if(!r.fc) return;
     map.set(r.fc, (map.get(r.fc)||0)+1);
   });
@@ -2422,8 +2624,18 @@ function calcularIngresosSalidas(periodos, keyFnFecha, keyFnRespuesta){
     CANAL_GRUPOS.forEach(c=> o.canales[c.key] = 0);
     return o;
   });
+  // Misma coincidencia robusta que en "Tareas por fecha de compromiso
+  // interno": evita que una fila de Subtarea Abierta con el estado
+  // escrito de forma ligeramente distinta se cuele en el conteo. Se
+  // excluye tanto de Ingresos como de Salidas, ya que una subtarea no
+  // debe contarse como una tarea que entra ni como una que se cierra.
+  const esSubtareaAbierta = (estado)=>{
+    const e = (estado||'').toUpperCase().replace(/\s+/g,' ').trim();
+    return e.includes('SUBTAREA') && e.includes('ABIERTA');
+  };
   currentData.forEach(r=>{
-    if(r.f && (r.e||'').toUpperCase() !== 'SUBTAREA ABIERTA'){
+    if(esSubtareaAbierta(r.e)) return;
+    if(r.f){
       const pk = keyFnFecha(r.f);
       const idx = idxByKey.get(pk);
       if(idx !== undefined){
@@ -3241,6 +3453,7 @@ function procesarArrayBuffer(arrayBuffer){
     reviewerMap = parsedResult.reviewerMap;
     reviewerNameByTag = parsedResult.reviewerNameByTag;
     clientesActivos = parsedResult.clientesActivos;
+    clienteFidelizadorActual = computeClienteFidelizadorActual();
     FILTERS_CONFIG.forEach(cfg=>filters[cfg.key].clear());
     filters.estado.clear();
     filters.revisionOnly = false;
@@ -3248,8 +3461,11 @@ function procesarArrayBuffer(arrayBuffer){
     gerApoyoFilter = null;
     gerFidelizadorFilter = null;
     gerReunionSubFilter = null;
+    gerTipoDinamico = 'POLÍTICAS';
+    gerTipoDinamicoSubFilter = null;
     opsDiaMesSeleccionado = null; // recalcula el mes actual con la fecha de hoy
     rebuildAllFilterOptions();
+    rebuildGerTipoDinamicoOptions();
     render();
     buildAgendaIndex();
     populateAgendaApoyoOptions();
@@ -3322,6 +3538,8 @@ function generarHtmlActualizado(){
   html = html.replace('let reviewerNameByTag = {};', 'let reviewerNameByTag = ' + reviewerNameJson + ';');
   const clientesActivosJson = JSON.stringify(Array.from(clientesActivos.entries()));
   html = html.replace('let clientesActivos = new Map(); // "nombre en minúsculas" -> "nombre original", con ESTADO = "ACTIVO" en LISTAS!N:Q', 'let clientesActivos = new Map(' + clientesActivosJson + ');');
+  const clienteFidelizadorJson = JSON.stringify(Array.from(clienteFidelizadorActual.entries()));
+  html = html.replace('let clienteFidelizadorActual = new Map(); // "cliente en minúsculas" -> nombre del abogado fidelizador de su tarea más reciente', 'let clienteFidelizadorActual = new Map(' + clienteFidelizadorJson + ');');
   const fechaRef = lastLoadedAt || new Date();
   // OJO: 'setLastUpdated(null);' aparece dos veces en el outerHTML: una vez
   // como texto literal dentro de esta misma función (el argumento de este
